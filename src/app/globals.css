@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------
+   DESIGN TOKENS — re-brand per client by editing ONLY this block.
+   Never hardcode these values in components.
+---------------------------------------------------------------- */
+:root {
+  --bg: #0b1020;
+  --bg-raised: #111833;
+  --bg-sunken: #080c18;
+  --line: #1e2740;
+
+  --paper: #f4efe6;
+  --paper-ink: #1a1a1a;
+
+  --text: #f1ece4;
+  --text-muted: #8f9bb3;
+
+  --accent: #c0393b;
+  --accent-hover: #a82f31;
+  --accent-soft: #e08789; /* small crimson text on dark — WCAG AA */
+  --accent-tint: rgba(192, 57, 59, 0.12);
+  --glow: rgba(192, 57, 59, 0.1);
+
+  --ok: #3fa37a;
+  --warn: #d9a441;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(900px 520px at 12% -10%, var(--glow), transparent 60%),
+      radial-gradient(760px 440px at 110% 4%, var(--glow), transparent 55%);
+    background-attachment: fixed;
+    color: var(--text-muted);
+    font-family: var(--font-manrope), Inter, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--text);
+    font-family: var(--font-playfair), Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: var(--accent-tint);
+    color: var(--text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  /* Mono label: uppercase, tracked, small — section markers, timestamps, IDs */
+  .label-mono {
+    font-family: var(--font-mono-jetbrains), ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

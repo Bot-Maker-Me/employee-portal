@@ -1,0 +1,35 @@
+import Link from "next/link";
+import { ArrowRight, type LucideIcon } from "lucide-react";
+
+export function ActionCard({
+  href,
+  icon: Icon,
+  title,
+  description,
+}: {
+  href: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col justify-between gap-6 rounded-ledger border border-line bg-raised p-6 shadow-raised transition-colors hover:border-accent"
+    >
+      <span className="grid h-10 w-10 place-items-center rounded-btn bg-accent-tint text-accent-soft">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <span>
+        <span className="flex items-center gap-2 font-serif text-xl text-ink">
+          {title}
+          <ArrowRight
+            className="h-4 w-4 text-accent-soft transition-transform group-hover:translate-x-1"
+            aria-hidden="true"
+          />
+        </span>
+        <span className="mt-1.5 block text-[14px] text-muted">{description}</span>
+      </span>
+    </Link>
+  );
+}

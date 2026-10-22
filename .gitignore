@@ -1,1 +1,8 @@
 .dyad/
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+.env*.local
+.DS_Store
