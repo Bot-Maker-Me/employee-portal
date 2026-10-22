@@ -9,38 +9,50 @@ import type { FeatureFlags } from "@/lib/features";
 type NavItem = {
   href: string;
   label: string;
+  short: string;
   icon: LucideIcon;
-  /** When set, the item is hidden if the matching feature flag is OFF. */
   feature?: keyof FeatureFlags;
-  badge?: number;
 };
 
 const ITEMS: NavItem[] = [
-  { href: "/home", label: "Home", icon: Home },
+  { href: "/home", label: "Home", short: "Home", icon: Home },
   {
     href: "/pharmacy",
     label: "Pharmacy Topics",
+    short: "Pharmacy",
     icon: MessagesSquare,
     feature: "employee_pharmacy_topics",
   },
-  { href: "/team", label: "Team Chat", icon: Users, feature: "employee_team_chat" },
-  { href: "/account", label: "Account", icon: UserCog },
+  {
+    href: "/team",
+    label: "Team Chat",
+    short: "Team",
+    icon: Users,
+    feature: "employee_team_chat",
+  },
+  { href: "/account", label: "Account", short: "Account", icon: UserCog },
 ];
 
-function useVisibleItems(flags: FeatureFlags) {
+function visibleItems(flags: FeatureFlags) {
   return ITEMS.filter((item) => !item.feature || flags[item.feature]);
 }
 
-/** Desktop sidebar. */
-export function PortalSidebar({ flags }: { flags: FeatureFlags }) {
+export function PortalSidebar({
+  flags,
+  badges = {},
+}: {
+  flags: FeatureFlags;
+  badges?: Record<string, number>;
+}) {
   const pathname = usePathname();
-  const items = useVisibleItems(flags);
 
   return (
     <nav className="flex flex-col gap-1" aria-label="Primary">
-      {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+      {visibleItems(flags).map((item) => {
+        const active =
+          pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
+        const badge = badges[item.href] ?? 0;
         return (
           <Link
             key={item.href}
@@ -54,13 +66,16 @@ export function PortalSidebar({ flags }: { flags: FeatureFlags }) {
             )}
           >
             <Icon
-              className={cn("h-[18px] w-[18px]", active ? "text-accent-soft" : "text-muted")}
+              className={cn(
+                "h-[18px] w-[18px]",
+                active ? "text-accent-soft" : "text-muted",
+              )}
               aria-hidden="true"
             />
             <span className="flex-1 truncate">{item.label}</span>
-            {typeof item.badge === "number" && item.badge > 0 && (
+            {badge > 0 && (
               <span className="label-mono min-w-[18px] rounded-full bg-accent px-1.5 py-0.5 text-center text-white">
-                {item.badge}
+                {badge}
               </span>
             )}
           </Link>
@@ -70,19 +85,25 @@ export function PortalSidebar({ flags }: { flags: FeatureFlags }) {
   );
 }
 
-/** Mobile bottom tab bar. */
-export function PortalTabBar({ flags }: { flags: FeatureFlags }) {
+export function PortalTabBar({
+  flags,
+  badges = {},
+}: {
+  flags: FeatureFlags;
+  badges?: Record<string, number>;
+}) {
   const pathname = usePathname();
-  const items = useVisibleItems(flags);
 
   return (
     <nav
       className="sticky bottom-0 z-20 flex border-t border-line bg-bg/95 backdrop-blur"
       aria-label="Primary"
     >
-      {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+      {visibleItems(flags).map((item) => {
+        const active =
+          pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
+        const badge = badges[item.href] ?? 0;
         return (
           <Link
             key={item.href}
@@ -97,8 +118,8 @@ export function PortalTabBar({ flags }: { flags: FeatureFlags }) {
               className={cn("h-5 w-5", active && "text-accent-soft")}
               aria-hidden="true"
             />
-            <span className="label-mono text-[10px]">{item.label.split(" ")[0]}</span>
-            {typeof item.badge === "number" && item.badge > 0 && (
+            <span className="label-mono text-[10px]">{item.short}</span>
+            {badge > 0 && (
               <span className="absolute right-1/4 top-1.5 h-2 w-2 rounded-full bg-accent" />
             )}
           </Link>

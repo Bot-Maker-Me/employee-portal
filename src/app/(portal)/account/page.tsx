@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SectionMarker } from "@/components/section-marker";
+import { NotificationSettings } from "@/components/notification-settings";
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
@@ -21,6 +22,7 @@ export default async function AccountPage() {
   if (!user) redirect("/login");
 
   const profile = await getProfile(user.id);
+  const isAdmin = profile?.role === "admin";
 
   return (
     <div className="animate-rise space-y-8 p-5 md:p-8">
@@ -37,6 +39,8 @@ export default async function AccountPage() {
           <Detail label="Role" value={profile?.role ?? "employee"} />
         </dl>
       </section>
+
+      <NotificationSettings userId={user.id} isAdmin={isAdmin} />
 
       <section className="max-w-2xl space-y-3">
         <SectionMarker index="06" label="Session" />

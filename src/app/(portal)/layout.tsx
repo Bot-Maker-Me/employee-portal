@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, isProfileLinked } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
+import { getActivitySummary } from "@/lib/activity";
 import { PortalSidebar, PortalTabBar } from "@/components/portal-nav";
 import { LiveTicker } from "@/components/live-ticker";
 import { UserFooter } from "@/components/user-footer";
@@ -28,7 +29,14 @@ export default async function PortalLayout({
   }
 
   const flags = await getFeatureFlags(profile.organization);
-  const ticker = `${profile.organization} · Secure session · ${profile.role ?? "employee"}`;
+  const { openTopics, unreadTopics, unreadChannels } =
+    await getActivitySummary(flags);
+
+  const totalUnread = unreadTopics + unreadChannels;
+  const tickerItems = `${openTopics} open ${
+    openTopics === 1 ? "topic" : "topics"
+  } · ${totalUnread} unread`;
+  const badges = { "/pharmacy": unreadTopics, "/team": unreadChannels };
 
   return (
     <div className="md:grid md:min-h-dvh md:grid-cols-[16rem_1fr]">
@@ -37,7 +45,7 @@ export default async function PortalLayout({
           <Wordmark />
         </div>
         <div className="flex-1 px-3">
-          <PortalSidebar flags={flags} />
+          <PortalSidebar flags={flags} badges={badges} />
         </div>
         <UserFooter profile={profile} />
       </aside>
@@ -47,12 +55,12 @@ export default async function PortalLayout({
           <Wordmark />
         </header>
 
-        <LiveTicker items={ticker} />
+        <LiveTicker items={tickerItems} />
 
         <main className="flex-1">{children}</main>
 
         <div className="md:hidden">
-          <PortalTabBar flags={flags} />
+          <PortalTabBar flags={flags} badges={badges} />
         </div>
       </div>
 
