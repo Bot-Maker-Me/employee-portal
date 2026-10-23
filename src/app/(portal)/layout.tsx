@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getProfile, isProfileLinked } from "@/lib/profile";
+import { getProfile, isAdmin, isApproved, isSuperAdmin } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { getActivitySummary } from "@/lib/activity";
 import { PortalSidebar, PortalTabBar } from "@/components/portal-nav";
@@ -9,6 +9,13 @@ import { UserFooter } from "@/components/user-footer";
 import { Wordmark } from "@/components/wordmark";
 import { IdleTimeout } from "@/components/idle-timeout";
 import { UnlinkedAccount } from "@/components/unlinked-account";
+import { PendingApproval } from "@/components/pending-approval";
+import type { FeatureFlags } from "@/lib/features";
+
+const NO_FLAGS: FeatureFlags = {
+  employee_team_chat: false,
+  employee_pharmacy_topics: false,
+};
 
 export default async function PortalLayout({
   children,
@@ -22,13 +29,16 @@ export default async function PortalLayout({
 
   if (!user) redirect("/login");
 
-  // Fail closed: never render portal data without a linked profile.
+  // Fail closed: never render portal data without a usable profile.
   const profile = await getProfile(user.id);
-  if (!isProfileLinked(profile)) {
-    return <UnlinkedAccount />;
-  }
+  if (!profile) return <UnlinkedAccount />;
+  if (!isApproved(profile)) return <PendingApproval />;
+  if (!profile.organization && !isSuperAdmin(profile)) return <UnlinkedAccount />;
 
-  const flags = await getFeatureFlags(profile.organization);
+  const admin = isAdmin(profile);
+  const flags = profile.organization
+    ? await getFeatureFlags(profile.organization)
+    : NO_FLAGS;
   const { openTopics, unreadTopics, unreadChannels } =
     await getActivitySummary(flags);
 
@@ -45,7 +55,7 @@ export default async function PortalLayout({
           <Wordmark />
         </div>
         <div className="flex-1 px-3">
-          <PortalSidebar flags={flags} badges={badges} />
+          <PortalSidebar flags={flags} badges={badges} isAdmin={admin} />
         </div>
         <UserFooter profile={profile} />
       </aside>
@@ -60,7 +70,7 @@ export default async function PortalLayout({
         <main className="flex-1">{children}</main>
 
         <div className="md:hidden">
-          <PortalTabBar flags={flags} badges={badges} />
+          <PortalTabBar flags={flags} badges={badges} isAdmin={admin} />
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LedgerPreview } from "@/components/ledger-preview";
 import { LoginForm } from "@/components/login-form";
 import { SectionMarker } from "@/components/section-marker";
@@ -35,7 +36,14 @@ export default function LoginPage({
           <SectionMarker index="02" label="Credentials" />
           <h2 className="mt-4 font-serif text-2xl text-ink">Access the portal</h2>
           <p className="mt-1.5 text-[14px] text-muted">
-            Accounts are issued by your administrator.
+            Sign in, or{" "}
+            <Link
+              href="/signup"
+              className="text-ink underline-offset-4 hover:text-accent-soft hover:underline"
+            >
+              create an account
+            </Link>{" "}
+            — new accounts are approved by an administrator.
           </p>
           {timedOut && (
             <p

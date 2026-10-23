@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getProfile } from "@/lib/profile";
+import { getProfile, isAdmin as isAdminUser } from "@/lib/profile";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SectionMarker } from "@/components/section-marker";
 import { NotificationSettings } from "@/components/notification-settings";
@@ -22,7 +22,7 @@ export default async function AccountPage() {
   if (!user) redirect("/login");
 
   const profile = await getProfile(user.id);
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = isAdminUser(profile);
 
   return (
     <div className="animate-rise space-y-8 p-5 md:p-8">
@@ -36,7 +36,14 @@ export default async function AccountPage() {
           <Detail label="Name" value={profile?.full_name ?? "—"} />
           <Detail label="Email" value={profile?.email ?? user.email ?? "—"} />
           <Detail label="Organization" value={profile?.organization ?? "Not linked"} />
-          <Detail label="Role" value={profile?.role ?? "employee"} />
+          <Detail
+            label="Role"
+            value={(profile?.role ?? "employee").replace("_", " ")}
+          />
+          <Detail
+            label="Status"
+            value={profile?.status === "active" ? "Approved" : "Pending"}
+          />
         </dl>
       </section>
 

@@ -5,6 +5,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 /** Routes reachable without a session. */
 const PUBLIC_PREFIXES = [
   "/login",
+  "/signup",
   "/forgot-password",
   "/reset-password",
   "/auth",
@@ -58,7 +59,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname === "/login" || pathname === "/")) {
+  if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";
     url.search = "";

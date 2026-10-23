@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MessagesSquare, Users, UserCog, type LucideIcon } from "lucide-react";
+import {
+  Home,
+  MessagesSquare,
+  ShieldCheck,
+  Users,
+  UserCog,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeatureFlags } from "@/lib/features";
 
@@ -12,6 +19,7 @@ type NavItem = {
   short: string;
   icon: LucideIcon;
   feature?: keyof FeatureFlags;
+  adminOnly?: boolean;
 };
 
 const ITEMS: NavItem[] = [
@@ -31,24 +39,37 @@ const ITEMS: NavItem[] = [
     feature: "employee_team_chat",
   },
   { href: "/account", label: "Account", short: "Account", icon: UserCog },
+  {
+    href: "/admin",
+    label: "Admin",
+    short: "Admin",
+    icon: ShieldCheck,
+    adminOnly: true,
+  },
 ];
 
-function visibleItems(flags: FeatureFlags) {
-  return ITEMS.filter((item) => !item.feature || flags[item.feature]);
+function visibleItems(flags: FeatureFlags, isAdmin: boolean) {
+  return ITEMS.filter(
+    (item) =>
+      (!item.feature || flags[item.feature]) &&
+      (!item.adminOnly || isAdmin),
+  );
 }
 
 export function PortalSidebar({
   flags,
   badges = {},
+  isAdmin = false,
 }: {
   flags: FeatureFlags;
   badges?: Record<string, number>;
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
 
   return (
     <nav className="flex flex-col gap-1" aria-label="Primary">
-      {visibleItems(flags).map((item) => {
+      {visibleItems(flags, isAdmin).map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
@@ -88,9 +109,11 @@ export function PortalSidebar({
 export function PortalTabBar({
   flags,
   badges = {},
+  isAdmin = false,
 }: {
   flags: FeatureFlags;
   badges?: Record<string, number>;
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -99,7 +122,7 @@ export function PortalTabBar({
       className="sticky bottom-0 z-20 flex border-t border-line bg-bg/95 backdrop-blur"
       aria-label="Primary"
     >
-      {visibleItems(flags).map((item) => {
+      {visibleItems(flags, isAdmin).map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;

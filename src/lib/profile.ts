@@ -6,21 +6,22 @@ export type Profile = {
   email: string | null;
   role: string | null;
   organization: string | null;
+  status: string | null;
   pharmacy_id: string | null;
   home_id: string | null;
 };
 
 /**
  * Loads the current user's profile. Fails closed: any error (missing table,
- * RLS denial, network) returns null so callers render the "not linked"
- * state instead of leaking data.
+ * RLS denial, network) returns null so callers render the "not linked" state
+ * instead of leaking data.
  */
 export async function getProfile(userId: string): Promise<Profile | null> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, full_name, email, role, organization, pharmacy_id, home_id")
+      .select("id, full_name, email, role, organization, status, pharmacy_id, home_id")
       .eq("id", userId)
       .maybeSingle();
 
@@ -31,9 +32,17 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   }
 }
 
-/** True when the profile is usable (exists and is attached to an organization). */
-export function isProfileLinked(
-  profile: Profile | null,
-): profile is Profile & { organization: string } {
-  return Boolean(profile && profile.organization);
+/** Approved accounts are the only ones allowed into the portal. */
+export function isApproved(profile: Profile | null): boolean {
+  return profile?.status === "active";
+}
+
+/** Organization admins and the platform super-admin. */
+export function isAdmin(profile: Profile | null): boolean {
+  return profile?.role === "admin" || profile?.role === "super_admin";
+}
+
+/** The platform owner: manages every organization and feature. */
+export function isSuperAdmin(profile: Profile | null): boolean {
+  return profile?.role === "super_admin";
 }
