@@ -6,10 +6,10 @@ import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import {
   CATEGORY_ORDER,
-  listThreads,
   type TopicCategory,
   type TopicStatus,
 } from "@/lib/topics";
+import { listThreads } from "@/lib/topics-server";
 import { formatStamp } from "@/lib/format";
 import { FeatureDisabled } from "@/components/feature-disabled";
 import { SectionMarker } from "@/components/section-marker";

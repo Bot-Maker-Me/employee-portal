@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
-import { getThread } from "@/lib/topics";
+import { getThread } from "@/lib/topics-server";
 import { FeatureDisabled } from "@/components/feature-disabled";
 import { ThreadView } from "@/components/thread-view";
 
