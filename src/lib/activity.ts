@@ -26,13 +26,16 @@ export async function getActivitySummary(
       supabase.rpc("topic_unread_counts"),
     ]);
     openTopics = count ?? 0;
-    unreadTopics = (topicUnread ?? []).reduce((sum, r) => sum + r.unread_count, 0);
+    unreadTopics = (topicUnread ?? []).reduce(
+      (sum: number, r: { unread_count: number }) => sum + r.unread_count,
+      0,
+    );
   }
 
   if (flags.employee_team_chat) {
     const { data: channelUnread } = await supabase.rpc("channel_unread_counts");
     unreadChannels = (channelUnread ?? []).reduce(
-      (sum, r) => sum + r.unread_count,
+      (sum: number, r: { unread_count: number }) => sum + r.unread_count,
       0,
     );
   }
