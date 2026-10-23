@@ -10,7 +10,7 @@
  * never reach the browser.
  */
 const FALLBACK_SUPABASE_URL = "https://yykeefdtlqoublhomfgg.supabase.co";
-const FALLBACK_SUPABASE_ANON_KEY =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5a2VlZmR0bHFvdWJsaG9tZmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NjQ4MzcsImV4cCI6MjEwODI0MDgzN30.tPCvPvAoldczxlQR1iUtO9BVfYW1fyq2bHTlPYtCYWI
+const FALLBACK_SUPABASE_ANON_KEY =
   "sb_publishable_BxVvS2t2OuYXej519eU0Pg_cT4Xp-YN";
 
 export const SUPABASE_URL =
