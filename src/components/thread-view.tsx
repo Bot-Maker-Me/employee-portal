@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, RefreshCw, Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatClock, formatFullStamp } from "@/lib/format";
@@ -11,36 +16,132 @@ import type { PharmaMessage, PharmaThread } from "@/lib/pharma/chat";
 import { cn } from "@/lib/utils";
 
 const MAX = 4000;
+/** How often we ask for new messages while the tab is visible. */
+const POLL_MS = 4000;
+
+type ViewMessage = PharmaMessage & { pending?: boolean };
+
+/** Merge by id (server rows win), oldest first. */
+function mergeMessages(
+  current: ViewMessage[],
+  incoming: PharmaMessage[],
+): ViewMessage[] {
+  const byId = new Map<string, ViewMessage>();
+  for (const message of current) byId.set(message.id, message);
+  for (const message of incoming) byId.set(message.id, message);
+  return [...byId.values()].sort(
+    (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
+  );
+}
 
 export function ThreadView({
   thread,
-  messages,
+  messages: serverMessages,
   pharmacyName,
 }: {
   thread: PharmaThread;
   messages: PharmaMessage[];
   pharmacyName: string;
 }) {
-  const router = useRouter();
+  const [messages, setMessages] = useState<ViewMessage[]>(serverMessages);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const closed = thread.status === "closed";
 
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const atBottomRef = useRef(true);
+  const messagesRef = useRef<ViewMessage[]>(serverMessages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // Fold in a fresh server render (navigation, back/forward) without dropping
+  // anything the user just sent optimistically.
+  useEffect(() => {
+    setMessages((current) => mergeMessages(current, serverMessages));
+  }, [serverMessages]);
+
+  const scrollToBottom = useCallback(() => {
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, []);
+
+  useEffect(() => {
+    if (atBottomRef.current) scrollToBottom();
+  }, [messages.length, scrollToBottom]);
+
+  /** Fetches messages newer than the last confirmed one. */
+  const poll = useCallback(async () => {
+    const last = messagesRef.current.filter((message) => !message.pending).pop();
+    const query = last?.created_at
+      ? `?since=${encodeURIComponent(last.created_at)}`
+      : "";
+    try {
+      const response = await fetch(
+        `/api/pharmacy/threads/${thread.id}/messages${query}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) return;
+      const data = (await response.json()) as { messages?: PharmaMessage[] };
+      if (data.messages?.length) {
+        setMessages((current) => mergeMessages(current, data.messages ?? []));
+      }
+    } catch {
+      // Offline or a transient failure: keep the current list and try again.
+    }
+  }, [thread.id]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    const timer = window.setInterval(tick, POLL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [poll]);
+
   async function send() {
     const text = body.trim();
-    if (!text) return;
+    if (!text || closed || sending) return;
     if (text.length > MAX) {
       setError(`Messages are limited to ${MAX} characters.`);
       return;
     }
 
-    setSending(true);
+    // Show it immediately, then reconcile with the stored row.
+    const pendingId = `pending-${Date.now()}`;
+    setMessages((current) => [
+      ...current,
+      {
+        id: pendingId,
+        thread_id: thread.id,
+        sender_id: null,
+        sender_side: "employee",
+        body: text,
+        created_at: new Date().toISOString(),
+        read_at: null,
+        pending: true,
+      },
+    ]);
+    setBody("");
     setError(null);
+    setSending(true);
+    atBottomRef.current = true;
+
     const result = await sendPharmacyMessage(thread.id, text);
     setSending(false);
 
     if (result.error) {
+      setMessages((current) => current.filter((m) => m.id !== pendingId));
+      setBody(text);
       setError(
         result.error === "CLOSED"
           ? "This chat is closed."
@@ -50,8 +151,19 @@ export function ThreadView({
       );
       return;
     }
-    setBody("");
-    router.refresh();
+
+    if (result.message) {
+      const stored = result.message;
+      setMessages((current) =>
+        mergeMessages(
+          current.filter((m) => m.id !== pendingId),
+          [stored],
+        ),
+      );
+    } else {
+      setMessages((current) => current.filter((m) => m.id !== pendingId));
+      void poll();
+    }
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -59,6 +171,13 @@ export function ThreadView({
       event.preventDefault();
       void send();
     }
+  }
+
+  function onScroll() {
+    const list = listRef.current;
+    if (!list) return;
+    atBottomRef.current =
+      list.scrollHeight - list.scrollTop - list.clientHeight < 120;
   }
 
   return (
@@ -77,10 +196,10 @@ export function ThreadView({
           </h1>
           <p className="label-mono mt-1 text-muted">
             {pharmacyName}
-            {thread.status === "closed" ? " · closed" : ""}
+            {thread.status === "closed" ? " · closed" : " · live"}
           </p>
         </div>
-        <Button variant="secondary" onClick={() => router.refresh()}>
+        <Button variant="secondary" onClick={() => void poll()}>
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
           Refresh
         </Button>
@@ -94,6 +213,8 @@ export function ThreadView({
       </div>
 
       <div
+        ref={listRef}
+        onScroll={onScroll}
         className="flex-1 space-y-4 overflow-y-auto px-5 py-6 md:px-8"
         aria-live="polite"
       >
@@ -110,6 +231,7 @@ export function ThreadView({
                   mine
                     ? "bg-accent-tint text-ink ring-1 ring-inset ring-accent/30"
                     : "bg-paper text-paper-ink shadow-ledger",
+                  message.pending && "opacity-60",
                 )}
               >
                 <p
@@ -119,6 +241,7 @@ export function ThreadView({
                   )}
                 >
                   {mine ? "You" : "Pharmacy"} · {formatClock(message.created_at)}
+                  {message.pending ? " · sending" : ""}
                 </p>
                 <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
                   {message.body}
@@ -142,7 +265,7 @@ export function ThreadView({
           <textarea
             rows={3}
             value={body}
-            disabled={closed || sending}
+            disabled={closed}
             maxLength={MAX}
             onChange={(event) => setBody(event.target.value)}
             onKeyDown={onKeyDown}
@@ -158,16 +281,13 @@ export function ThreadView({
             <span className="label-mono text-muted">
               {body.length} / {MAX}
             </span>
-            <Button
-              onClick={() => void send()}
-              disabled={closed || sending || !body.trim()}
-            >
+            <Button onClick={() => void send()} disabled={closed || !body.trim()}>
               {sending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              {sending ? "Sending" : "Send"}
+              Send
             </Button>
           </div>
         </div>

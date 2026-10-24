@@ -39,6 +39,42 @@ export async function listThreads(
   return (data ?? []) as PharmaThread[];
 }
 
+/** The organization a thread belongs to, for authorization checks. */
+export async function getThreadOrganization(
+  threadId: string,
+): Promise<string | null> {
+  const supabase = createPharmaClient();
+  const { data } = await supabase
+    .from("topic_threads")
+    .select("organization_name")
+    .eq("id", threadId)
+    .maybeSingle();
+  return (data?.organization_name as string | null) ?? null;
+}
+
+/**
+ * The newest messages on a thread, oldest first. When `since` is given, only
+ * messages from that timestamp onwards are returned (inclusive — the client
+ * de-duplicates by id) so polling stays cheap.
+ */
+export async function listThreadMessages(
+  threadId: string,
+  since?: string | null,
+): Promise<PharmaMessage[]> {
+  const supabase = createPharmaClient();
+  let query = supabase
+    .from("topic_messages")
+    .select("id, thread_id, sender_id, sender_side, body, created_at, read_at")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (since) query = query.gte("created_at", since);
+
+  const { data, error } = await query;
+  if (error) return [];
+  return ((data ?? []) as PharmaMessage[]).reverse();
+}
+
 export async function getThread(id: string): Promise<{
   thread: PharmaThread;
   messages: PharmaMessage[];

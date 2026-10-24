@@ -9,6 +9,7 @@ import {
   type PharmacyMember,
 } from "@/lib/pharma/directory";
 import { resolvePharmaUserId } from "@/lib/pharma/identity";
+import type { PharmaMessage } from "@/lib/pharma/chat";
 import type { TopicCategory, TopicPriority } from "@/lib/topics";
 
 /** Compact, non-PHI description of a Postgres/PostgREST error. */
@@ -123,7 +124,7 @@ export async function createPharmacyThread(input: {
 export async function sendPharmacyMessage(
   threadId: string,
   body: string,
-): Promise<{ error?: string; detail?: string }> {
+): Promise<{ error?: string; detail?: string; message?: PharmaMessage }> {
   const text = body.trim();
   if (!text) return { error: "EMPTY" };
 
@@ -137,7 +138,7 @@ export async function sendPharmacyMessage(
     // Authorize: the thread must belong to the caller's organization.
     const { data: thread } = await pharma
       .from("topic_threads")
-      .select("organization_name, status")
+      .select("organization_name, status, created_by")
       .eq("id", threadId)
       .maybeSingle();
     if (!thread || thread.organization_name !== session.organization) {
@@ -145,20 +146,24 @@ export async function sendPharmacyMessage(
     }
     if (thread.status === "closed") return { error: "CLOSED" };
 
-    const pharmaUserId = await resolvePharmaUserId(session.email);
-    const { error } = await pharma.from("topic_messages").insert({
-      thread_id: threadId,
-      sender_id: pharmaUserId,
-      sender_side: "employee",
-      body: text,
-    });
-    if (error) {
-      console.error("[pharma] message insert failed:", error.message);
+    // Reuse the identity the thread was created with, so sending costs no extra
+    // lookups and can never trip the auth.users foreign key.
+    const { data: inserted, error } = await pharma
+      .from("topic_messages")
+      .insert({
+        thread_id: threadId,
+        sender_id: thread.created_by ?? null,
+        sender_side: "employee",
+        body: text,
+      })
+      .select("id, thread_id, sender_id, sender_side, body, created_at, read_at")
+      .single();
+    if (error || !inserted) {
+      console.error("[pharma] message insert failed:", error?.message);
       return { error: "SEND_FAILED", detail: describeError(error) };
     }
 
-    revalidatePath(`/pharmacy/${threadId}`);
-    return {};
+    return { message: inserted as PharmaMessage };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown";
     console.error("[pharma] send threw:", detail);

@@ -26,6 +26,21 @@ export async function resolvePharmaUserId(
   let resolved: string | null = null;
   try {
     const supabase = createPharmaClient();
+
+    // Fast path: the Pharma `profiles` row mirrors the auth user's email, so a
+    // single indexed lookup is enough. (If the column isn't there we fall
+    // through to the auth-user listing below.)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", key)
+      .limit(1)
+      .maybeSingle();
+    if (profile?.id) {
+      cache.set(key, profile.id as string);
+      return profile.id as string;
+    }
+
     for (let page = 1; page <= MAX_PAGES; page += 1) {
       const { data, error } = await supabase.auth.admin.listUsers({
         page,
