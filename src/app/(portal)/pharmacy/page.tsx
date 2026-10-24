@@ -4,38 +4,17 @@ import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
-import {
-  CATEGORY_ORDER,
-  type TopicCategory,
-  type TopicStatus,
-} from "@/lib/topics";
-import { listThreads } from "@/lib/topics-server";
-import { formatStamp } from "@/lib/format";
+import { isPharmaConfigured } from "@/lib/pharma/client";
+import { listThreads } from "@/lib/pharma/chat";
+import { listPharmacies } from "@/lib/pharma/directory";
 import { FeatureDisabled } from "@/components/feature-disabled";
+import { PharmaUnconfigured } from "@/components/pharma-unconfigured";
 import { SectionMarker } from "@/components/section-marker";
-import { ThreadFilters } from "@/components/thread-filters";
-import { CategoryTag, PriorityTag, UnreadBadge } from "@/components/topic-badges";
+import { CategoryTag, PriorityTag } from "@/components/topic-badges";
+import { formatStamp } from "@/lib/format";
+import type { TopicCategory, TopicPriority } from "@/lib/topics";
 
-function parseStatus(value: string | undefined): TopicStatus | "all" {
-  return value === "closed" || value === "all" ? value : "open";
-}
-
-function parseCategory(value: string | undefined): TopicCategory | "all" {
-  return CATEGORY_ORDER.includes(value as TopicCategory)
-    ? (value as TopicCategory)
-    : "all";
-}
-
-export default async function PharmacyTopicsPage({
-  searchParams,
-}: {
-  searchParams: {
-    status?: string;
-    category?: string;
-    unread?: string;
-    q?: string;
-  };
-}) {
+export default async function PharmacyChatPage() {
   const supabase = createClient();
   const {
     data: { user },
@@ -50,19 +29,13 @@ export default async function PharmacyTopicsPage({
     return <FeatureDisabled label="Pharmacy Chat" />;
   }
 
-  const status = parseStatus(searchParams.status);
-  const category = parseCategory(searchParams.category);
-  const unreadOnly = searchParams.unread === "1";
-  const search = (searchParams.q ?? "").trim();
+  if (!isPharmaConfigured()) return <PharmaUnconfigured />;
 
-  const { threads, unread } = await listThreads({
-    status,
-    category,
-    unreadOnly,
-    search,
-  });
-
-  const totalUnread = Object.values(unread).reduce((sum, n) => sum + n, 0);
+  const [threads, pharmacies] = await Promise.all([
+    listThreads(profile.organization),
+    listPharmacies(),
+  ]);
+  const nameById = new Map(pharmacies.map((pharmacy) => [pharmacy.id, pharmacy.name]));
 
   return (
     <div className="animate-rise space-y-6 p-5 md:p-8">
@@ -71,9 +44,9 @@ export default async function PharmacyTopicsPage({
           <SectionMarker index="03" label="Pharmacy" />
           <h1 className="mt-4 font-serif text-3xl text-ink">Pharmacy Chat</h1>
           <p className="mt-1.5 text-[14px] text-muted">
-            {totalUnread > 0
-              ? `${totalUnread} unread ${totalUnread === 1 ? "reply" : "replies"}`
-              : "All caught up"}
+            {threads.length}{" "}
+            {threads.length === 1 ? "conversation" : "conversations"} with the
+            pharmacy
           </p>
         </div>
         <Link
@@ -85,18 +58,11 @@ export default async function PharmacyTopicsPage({
         </Link>
       </div>
 
-      <ThreadFilters
-        status={status}
-        category={category}
-        unread={unreadOnly}
-        search={search}
-      />
-
       {threads.length === 0 ? (
         <div className="rounded-ledger border border-line bg-raised p-8 text-center">
           <p className="text-[15px] text-ink">No chats here yet.</p>
           <p className="mt-1.5 text-[14px] text-muted">
-            Start a chat to ask the pharmacy a question.
+            Start a chat with a pharmacy member.
           </p>
         </div>
       ) : (
@@ -109,22 +75,22 @@ export default async function PharmacyTopicsPage({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <CategoryTag category={thread.category} />
-                    <PriorityTag priority={thread.priority} />
+                    <CategoryTag category={(thread.category ?? "general") as TopicCategory} />
+                    <PriorityTag priority={(thread.priority ?? "normal") as TopicPriority} />
                     {thread.status === "closed" && (
                       <span className="label-mono text-muted">Closed</span>
                     )}
                   </div>
                   <p className="mt-2 truncate font-serif text-lg text-ink">
-                    {thread.title}
+                    {thread.topic ?? "(no subject)"}
+                  </p>
+                  <p className="label-mono mt-1 truncate text-muted">
+                    {nameById.get(thread.pharmacy_id) ?? "Pharmacy"}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="label-mono text-muted">
-                    {formatStamp(thread.last_message_at)}
-                  </span>
-                  <UnreadBadge count={unread[thread.id] ?? 0} />
-                </div>
+                <span className="label-mono shrink-0 text-muted">
+                  {formatStamp(thread.created_at)}
+                </span>
               </Link>
             </li>
           ))}

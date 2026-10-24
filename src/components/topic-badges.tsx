@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import {
   CATEGORY_LABELS,
   type TopicCategory,
@@ -18,21 +17,6 @@ export function PriorityTag({ priority }: { priority: TopicPriority }) {
   return (
     <span className="label-mono rounded-btn border border-accent bg-accent-tint px-2 py-0.5 text-accent-soft">
       Urgent
-    </span>
-  );
-}
-
-export function StatusTag({ status }: { status: "open" | "closed" }) {
-  return (
-    <span
-      className={cn(
-        "label-mono rounded-btn border px-2 py-0.5",
-        status === "open"
-          ? "border-ok/50 text-ok"
-          : "border-line text-muted",
-      )}
-    >
-      {status}
     </span>
   );
 }

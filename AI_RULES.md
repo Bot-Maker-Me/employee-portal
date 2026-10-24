@@ -22,7 +22,8 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 ## Structure
 - App Router pages in `src/app/`; public auth pages are `login`, `signup`, `forgot-password`, `reset-password`, `auth/callback`. The authenticated area is the `src/app/(portal)/` route group (`home`, `pharmacy`, `team`, `account`, `admin`).
 - Reusable components in `src/components/`; UI primitives in `src/components/ui/`; admin components in `src/components/admin/`.
-- Data/helpers in `src/lib/` (`profile.ts`, `admin.ts`, `features.ts`, `channels.ts`, `topics.ts` + `topics-server.ts`, `auth-errors.ts`, `supabase/*`).
+- Data/helpers in `src/lib/` (`profile.ts`, `admin.ts`, `features.ts`, `channels.ts`, `topics.ts`, `auth-errors.ts`, `supabase/*`).
+- **Pharma Portal bridge** lives in `src/lib/pharma/` (`client.ts`, `directory.ts`, `chat.ts`, `actions.ts`) and is **server-only**. Pharmacy Chat reads/writes the separate Pharma/Nursing project (`tenants`, `tenant_members`, `profiles`, `topic_threads`, `topic_messages`). It authenticates with `PHARMA_SUPABASE_SERVICE_ROLE_KEY` (server env only — never `NEXT_PUBLIC_*`). The URL falls back to `https://ayvpdpthxwplbsmhpbva.supabase.co`.
 - SQL for the shared Supabase project lives in `sql/` and is delivered for the user to run — never run silently.
 
 ## Roles & Approval

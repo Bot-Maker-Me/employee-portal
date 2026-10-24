@@ -1,0 +1,123 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/profile";
+import { createPharmaClient, isPharmaConfigured } from "@/lib/pharma/client";
+import {
+  listPharmacyMembers,
+  type PharmacyMember,
+} from "@/lib/pharma/directory";
+import type { TopicCategory, TopicPriority } from "@/lib/topics";
+
+/** Resolves the signed-in, approved employee and their organization. */
+async function requireActiveEmployee(): Promise<{
+  userId: string;
+  organization: string;
+} | null> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const profile = await getProfile(user.id);
+  if (!profile || profile.status !== "active" || !profile.organization) {
+    return null;
+  }
+  return { userId: user.id, organization: profile.organization };
+}
+
+/** Server action: members of a pharmacy, for the picker. */
+export async function listPharmacyMembersAction(
+  pharmacyId: string,
+): Promise<PharmacyMember[]> {
+  const session = await requireActiveEmployee();
+  if (!session || !isPharmaConfigured()) return [];
+  try {
+    return await listPharmacyMembers(pharmacyId);
+  } catch {
+    return [];
+  }
+}
+
+/** Server action: create a new pharmacy chat + its first message. */
+export async function createPharmacyThread(input: {
+  pharmacyId: string;
+  memberId: string | null;
+  title: string;
+  category: TopicCategory;
+  priority: TopicPriority;
+  body: string;
+}): Promise<{ id: string } | { error: string }> {
+  const session = await requireActiveEmployee();
+  if (!session) return { error: "UNAUTHENTICATED" };
+  if (!isPharmaConfigured()) return { error: "NOT_CONFIGURED" };
+
+  const pharma = createPharmaClient();
+  const { data: thread, error: threadError } = await pharma
+    .from("topic_threads")
+    .insert({
+      organization_id: session.userId,
+      organization_name: session.organization,
+      pharmacy_id: input.pharmacyId,
+      created_by: session.userId,
+      topic: input.title,
+      category: input.category,
+      priority: input.priority,
+      status: "open",
+      assigned_user_id: input.memberId,
+    })
+    .select("id")
+    .single();
+
+  if (threadError || !thread) return { error: "CREATE_FAILED" };
+
+  const { error: messageError } = await pharma.from("topic_messages").insert({
+    thread_id: thread.id,
+    sender_id: session.userId,
+    sender_side: "employee",
+    body: input.body,
+  });
+  if (messageError) return { error: "CREATE_FAILED" };
+
+  revalidatePath("/pharmacy");
+  return { id: thread.id as string };
+}
+
+/** Server action: send a message on an existing thread. */
+export async function sendPharmacyMessage(
+  threadId: string,
+  body: string,
+): Promise<{ error?: string }> {
+  const text = body.trim();
+  if (!text) return { error: "EMPTY" };
+
+  const session = await requireActiveEmployee();
+  if (!session) return { error: "UNAUTHENTICATED" };
+  if (!isPharmaConfigured()) return { error: "NOT_CONFIGURED" };
+
+  const pharma = createPharmaClient();
+
+  // Authorize: the thread must belong to the caller's organization.
+  const { data: thread } = await pharma
+    .from("topic_threads")
+    .select("organization_name, status")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (!thread || thread.organization_name !== session.organization) {
+    return { error: "FORBIDDEN" };
+  }
+  if (thread.status === "closed") return { error: "CLOSED" };
+
+  const { error } = await pharma.from("topic_messages").insert({
+    thread_id: threadId,
+    sender_id: session.userId,
+    sender_side: "employee",
+    body: text,
+  });
+  if (error) return { error: "SEND_FAILED" };
+
+  revalidatePath(`/pharmacy/${threadId}`);
+  return {};
+}

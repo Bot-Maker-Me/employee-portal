@@ -4,11 +4,14 @@ import { ArrowLeft, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
+import { isPharmaConfigured } from "@/lib/pharma/client";
+import { listPharmacies } from "@/lib/pharma/directory";
 import { FeatureDisabled } from "@/components/feature-disabled";
+import { PharmaUnconfigured } from "@/components/pharma-unconfigured";
 import { SectionMarker } from "@/components/section-marker";
-import { NewTopicForm } from "@/components/new-topic-form";
+import { NewPharmacyChatForm } from "@/components/new-pharmacy-chat-form";
 
-export default async function NewTopicPage() {
+export default async function NewPharmacyChatPage() {
   const supabase = createClient();
   const {
     data: { user },
@@ -22,6 +25,10 @@ export default async function NewTopicPage() {
   if (!flags.employee_pharmacy_topics) {
     return <FeatureDisabled label="Pharmacy Chat" />;
   }
+
+  if (!isPharmaConfigured()) return <PharmaUnconfigured />;
+
+  const pharmacies = await listPharmacies();
 
   return (
     <div className="animate-rise space-y-6 p-5 md:p-8">
@@ -50,7 +57,13 @@ export default async function NewTopicPage() {
       </div>
 
       <div className="max-w-2xl rounded-ledger border border-line bg-raised p-6">
-        <NewTopicForm />
+        {pharmacies.length === 0 ? (
+          <p className="text-[14px] text-muted">
+            No pharmacies are available to message yet.
+          </p>
+        ) : (
+          <NewPharmacyChatForm pharmacies={pharmacies} />
+        )}
       </div>
     </div>
   );
