@@ -8,6 +8,7 @@ import {
   listPharmacyMembers,
   type PharmacyMember,
 } from "@/lib/pharma/directory";
+import { resolvePharmaUserId } from "@/lib/pharma/identity";
 import type { TopicCategory, TopicPriority } from "@/lib/topics";
 
 /** Compact, non-PHI description of a Postgres/PostgREST error. */
@@ -26,6 +27,7 @@ function describeError(error: {
 /** Resolves the signed-in, approved employee and their organization. */
 async function requireActiveEmployee(): Promise<{
   userId: string;
+  email: string | null;
   organization: string;
 } | null> {
   const supabase = createClient();
@@ -38,7 +40,11 @@ async function requireActiveEmployee(): Promise<{
   if (!profile || profile.status !== "active" || !profile.organization) {
     return null;
   }
-  return { userId: user.id, organization: profile.organization };
+  return {
+    userId: user.id,
+    email: user.email ?? null,
+    organization: profile.organization,
+  };
 }
 
 /** Server action: members of a pharmacy, for the picker. */
@@ -69,13 +75,16 @@ export async function createPharmacyThread(input: {
 
   try {
     const pharma = createPharmaClient();
+    // Employee Portal ids do not exist in the Pharma project's auth.users, so
+    // resolve a Pharma-side identity (or fall back to null).
+    const pharmaUserId = await resolvePharmaUserId(session.email);
     const { data: thread, error: threadError } = await pharma
       .from("topic_threads")
       .insert({
         organization_id: session.userId,
         organization_name: session.organization,
         pharmacy_id: input.pharmacyId,
-        created_by: session.userId,
+        created_by: pharmaUserId,
         topic: input.title,
         category: input.category,
         priority: input.priority,
@@ -92,7 +101,7 @@ export async function createPharmacyThread(input: {
 
     const { error: messageError } = await pharma.from("topic_messages").insert({
       thread_id: thread.id,
-      sender_id: session.userId,
+      sender_id: pharmaUserId,
       sender_side: "employee",
       body: input.body,
     });
@@ -136,9 +145,10 @@ export async function sendPharmacyMessage(
     }
     if (thread.status === "closed") return { error: "CLOSED" };
 
+    const pharmaUserId = await resolvePharmaUserId(session.email);
     const { error } = await pharma.from("topic_messages").insert({
       thread_id: threadId,
-      sender_id: session.userId,
+      sender_id: pharmaUserId,
       sender_side: "employee",
       body: text,
     });
