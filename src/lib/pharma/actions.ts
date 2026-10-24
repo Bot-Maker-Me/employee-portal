@@ -10,6 +10,19 @@ import {
 } from "@/lib/pharma/directory";
 import type { TopicCategory, TopicPriority } from "@/lib/topics";
 
+/** Compact, non-PHI description of a Postgres/PostgREST error. */
+function describeError(error: {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+} | null): string {
+  if (!error) return "unknown error";
+  return [error.code, error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** Resolves the signed-in, approved employee and their organization. */
 async function requireActiveEmployee(): Promise<{
   userId: string;
@@ -49,47 +62,59 @@ export async function createPharmacyThread(input: {
   category: TopicCategory;
   priority: TopicPriority;
   body: string;
-}): Promise<{ id: string } | { error: string }> {
+}): Promise<{ id: string } | { error: string; detail?: string }> {
   const session = await requireActiveEmployee();
   if (!session) return { error: "UNAUTHENTICATED" };
   if (!isPharmaConfigured()) return { error: "NOT_CONFIGURED" };
 
-  const pharma = createPharmaClient();
-  const { data: thread, error: threadError } = await pharma
-    .from("topic_threads")
-    .insert({
-      organization_id: session.userId,
-      organization_name: session.organization,
-      pharmacy_id: input.pharmacyId,
-      created_by: session.userId,
-      topic: input.title,
-      category: input.category,
-      priority: input.priority,
-      status: "open",
-      assigned_user_id: input.memberId,
-    })
-    .select("id")
-    .single();
+  try {
+    const pharma = createPharmaClient();
+    const { data: thread, error: threadError } = await pharma
+      .from("topic_threads")
+      .insert({
+        organization_id: session.userId,
+        organization_name: session.organization,
+        pharmacy_id: input.pharmacyId,
+        created_by: session.userId,
+        topic: input.title,
+        category: input.category,
+        priority: input.priority,
+        status: "open",
+        assigned_user_id: input.memberId,
+      })
+      .select("id")
+      .single();
 
-  if (threadError || !thread) return { error: "CREATE_FAILED" };
+    if (threadError || !thread) {
+      console.error("[pharma] topic_threads insert failed:", threadError?.message);
+      return { error: "CREATE_FAILED", detail: describeError(threadError) };
+    }
 
-  const { error: messageError } = await pharma.from("topic_messages").insert({
-    thread_id: thread.id,
-    sender_id: session.userId,
-    sender_side: "employee",
-    body: input.body,
-  });
-  if (messageError) return { error: "CREATE_FAILED" };
+    const { error: messageError } = await pharma.from("topic_messages").insert({
+      thread_id: thread.id,
+      sender_id: session.userId,
+      sender_side: "employee",
+      body: input.body,
+    });
+    if (messageError) {
+      console.error("[pharma] topic_messages insert failed:", messageError.message);
+      return { error: "CREATE_FAILED", detail: `message: ${describeError(messageError)}` };
+    }
 
-  revalidatePath("/pharmacy");
-  return { id: thread.id as string };
+    revalidatePath("/pharmacy");
+    return { id: thread.id as string };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown";
+    console.error("[pharma] create thread threw:", detail);
+    return { error: "CREATE_FAILED", detail };
+  }
 }
 
 /** Server action: send a message on an existing thread. */
 export async function sendPharmacyMessage(
   threadId: string,
   body: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; detail?: string }> {
   const text = body.trim();
   if (!text) return { error: "EMPTY" };
 
@@ -97,27 +122,36 @@ export async function sendPharmacyMessage(
   if (!session) return { error: "UNAUTHENTICATED" };
   if (!isPharmaConfigured()) return { error: "NOT_CONFIGURED" };
 
-  const pharma = createPharmaClient();
+  try {
+    const pharma = createPharmaClient();
 
-  // Authorize: the thread must belong to the caller's organization.
-  const { data: thread } = await pharma
-    .from("topic_threads")
-    .select("organization_name, status")
-    .eq("id", threadId)
-    .maybeSingle();
-  if (!thread || thread.organization_name !== session.organization) {
-    return { error: "FORBIDDEN" };
+    // Authorize: the thread must belong to the caller's organization.
+    const { data: thread } = await pharma
+      .from("topic_threads")
+      .select("organization_name, status")
+      .eq("id", threadId)
+      .maybeSingle();
+    if (!thread || thread.organization_name !== session.organization) {
+      return { error: "FORBIDDEN" };
+    }
+    if (thread.status === "closed") return { error: "CLOSED" };
+
+    const { error } = await pharma.from("topic_messages").insert({
+      thread_id: threadId,
+      sender_id: session.userId,
+      sender_side: "employee",
+      body: text,
+    });
+    if (error) {
+      console.error("[pharma] message insert failed:", error.message);
+      return { error: "SEND_FAILED", detail: describeError(error) };
+    }
+
+    revalidatePath(`/pharmacy/${threadId}`);
+    return {};
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown";
+    console.error("[pharma] send threw:", detail);
+    return { error: "SEND_FAILED", detail };
   }
-  if (thread.status === "closed") return { error: "CLOSED" };
-
-  const { error } = await pharma.from("topic_messages").insert({
-    thread_id: threadId,
-    sender_id: session.userId,
-    sender_side: "employee",
-    body: text,
-  });
-  if (error) return { error: "SEND_FAILED" };
-
-  revalidatePath(`/pharmacy/${threadId}`);
-  return {};
 }

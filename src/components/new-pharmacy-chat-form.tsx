@@ -82,7 +82,9 @@ export function NewPharmacyChatForm({
       setError(
         result.error === "NOT_CONFIGURED"
           ? "Pharmacy Chat isn’t connected yet."
-          : "We couldn’t create the chat. Please try again.",
+          : result.detail
+            ? `Couldn’t create the chat: ${result.detail}`
+            : "We couldn’t create the chat. Please try again.",
       );
       setLoading(false);
       return;

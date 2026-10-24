@@ -44,7 +44,9 @@ export function ThreadView({
       setError(
         result.error === "CLOSED"
           ? "This chat is closed."
-          : "Message failed to send. Please try again.",
+          : result.detail
+            ? `Message failed to send: ${result.detail}`
+            : "Message failed to send. Please try again.",
       );
       return;
     }
