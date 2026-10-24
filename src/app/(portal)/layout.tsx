@@ -44,7 +44,7 @@ export default async function PortalLayout({
 
   const totalUnread = unreadTopics + unreadChannels;
   const tickerItems = `${openTopics} open ${
-    openTopics === 1 ? "topic" : "topics"
+    openTopics === 1 ? "chat" : "chats"
   } · ${totalUnread} unread`;
   const badges = { "/pharmacy": unreadTopics, "/team": unreadChannels };
 

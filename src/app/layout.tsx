@@ -6,7 +6,7 @@ import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 export const metadata: Metadata = {
   title: "Employee Portal",
   description:
-    "Secure internal messaging and pharmacy topic channels for pharmacy teams.",
+    "Secure internal messaging and pharmacy chat channels for pharmacy teams.",
   manifest: "/manifest.json",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
   appleWebApp: {

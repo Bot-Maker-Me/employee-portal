@@ -130,7 +130,7 @@ export function ThreadView({
         <Link
           href="/pharmacy"
           className="mt-1 text-muted transition-colors hover:text-ink"
-          aria-label="Back to topics"
+          aria-label="Back to chats"
         >
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </Link>

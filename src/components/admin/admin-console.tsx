@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const FEATURE_LABELS: Record<string, string> = {
   employee_team_chat: "Team Chat — employees chat inside this app",
-  employee_pharmacy_topics: "Pharmacy Topics — shared chat with Pharma Portal",
+  employee_pharmacy_topics: "Pharmacy Chat — shared chat with Pharma Portal",
 };
 
 function mapError(message: string): string {
@@ -370,7 +370,8 @@ export function AdminConsole({
         )}
       </section>
 
-      {/* Feature flags ------------------------------------------------------ */}
+      {/* Feature flags (super-admin only) ----------------------------------- */}
+      {isSuperAdmin && (
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-accent-soft" aria-hidden="true" />
@@ -449,6 +450,7 @@ export function AdminConsole({
           )}
         </div>
       </section>
+      )}
     </div>
   );
 }

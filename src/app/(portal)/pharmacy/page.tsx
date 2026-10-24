@@ -47,7 +47,7 @@ export default async function PharmacyTopicsPage({
 
   const flags = await getFeatureFlags(profile.organization);
   if (!flags.employee_pharmacy_topics) {
-    return <FeatureDisabled label="Pharmacy Topics" />;
+    return <FeatureDisabled label="Pharmacy Chat" />;
   }
 
   const status = parseStatus(searchParams.status);
@@ -69,7 +69,7 @@ export default async function PharmacyTopicsPage({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <SectionMarker index="03" label="Pharmacy" />
-          <h1 className="mt-4 font-serif text-3xl text-ink">Pharmacy Topics</h1>
+          <h1 className="mt-4 font-serif text-3xl text-ink">Pharmacy Chat</h1>
           <p className="mt-1.5 text-[14px] text-muted">
             {totalUnread > 0
               ? `${totalUnread} unread ${totalUnread === 1 ? "reply" : "replies"}`
@@ -81,7 +81,7 @@ export default async function PharmacyTopicsPage({
           className="label-mono inline-flex items-center gap-2 rounded-btn bg-accent px-4 py-2.5 text-white transition-colors hover:bg-accent-hover"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-          New topic
+          New chat
         </Link>
       </div>
 
@@ -94,9 +94,9 @@ export default async function PharmacyTopicsPage({
 
       {threads.length === 0 ? (
         <div className="rounded-ledger border border-line bg-raised p-8 text-center">
-          <p className="text-[15px] text-ink">No topics here yet.</p>
+          <p className="text-[15px] text-ink">No chats here yet.</p>
           <p className="mt-1.5 text-[14px] text-muted">
-            Start a topic to ask the pharmacy a question.
+            Start a chat to ask the pharmacy a question.
           </p>
         </div>
       ) : (

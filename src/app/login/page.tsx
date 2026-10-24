@@ -24,7 +24,7 @@ export default function LoginPage({
         </h1>
         <p className="mt-5 max-w-md text-[15px] text-muted">
           A calm, auditable space for pharmacy teams — internal chat and
-          pharmacy topic channels, kept in a single register.
+          pharmacy chat channels, kept in a single register.
         </p>
         <div className="mt-10 hidden lg:block">
           <LedgerPreview />

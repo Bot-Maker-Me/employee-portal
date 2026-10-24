@@ -22,7 +22,7 @@ export default async function ThreadPage({
 
   const flags = await getFeatureFlags(profile.organization);
   if (!flags.employee_pharmacy_topics) {
-    return <FeatureDisabled label="Pharmacy Topics" />;
+    return <FeatureDisabled label="Pharmacy Chat" />;
   }
 
   const result = await getThread(params.id);

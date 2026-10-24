@@ -25,7 +25,7 @@ export function NewTopicForm() {
     event.preventDefault();
     setError(null);
 
-    if (!title.trim()) return setError("Please add a topic title.");
+    if (!title.trim()) return setError("Please add a chat title.");
     if (!body.trim()) return setError("Please write your first message.");
     if (body.length > MAX) return setError(`Messages are limited to ${MAX} characters.`);
 
@@ -42,7 +42,7 @@ export function NewTopicForm() {
       setError(
         rpcError?.message.includes("NO_ORG")
           ? "Your account is not linked to an organization."
-          : "We couldn’t create the topic. Please try again.",
+          : "We couldn’t create the chat. Please try again.",
       );
       setLoading(false);
       return;
@@ -63,7 +63,7 @@ export function NewTopicForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="title">Topic title</Label>
+        <Label htmlFor="title">Chat title</Label>
         <Input
           id="title"
           required
@@ -136,7 +136,7 @@ export function NewTopicForm() {
       <div className="flex gap-3">
         <Button type="submit" disabled={loading}>
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-          {loading ? "Creating" : "Create topic"}
+          {loading ? "Creating" : "Create chat"}
         </Button>
         <Button type="button" variant="secondary" onClick={() => router.back()}>
           Cancel

@@ -26,7 +26,7 @@ const ITEMS: NavItem[] = [
   { href: "/home", label: "Home", short: "Home", icon: Home },
   {
     href: "/pharmacy",
-    label: "Pharmacy Topics",
+    label: "Pharmacy Chat",
     short: "Pharmacy",
     icon: MessagesSquare,
     feature: "employee_pharmacy_topics",

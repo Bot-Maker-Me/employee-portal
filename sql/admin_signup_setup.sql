@@ -69,18 +69,20 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- 4. Feature defaults: turn the two chat features on for everyone ------------
+-- 4. Feature defaults: Pharmacy Chat ON, Team Chat OFF (hidden) --------------
 insert into public.features (key, default_enabled)
-select 'employee_team_chat', true
+select 'employee_team_chat', false
  where not exists (select 1 from public.features where key = 'employee_team_chat');
 
 insert into public.features (key, default_enabled)
 select 'employee_pharmacy_topics', true
  where not exists (select 1 from public.features where key = 'employee_pharmacy_topics');
 
-update public.features
-   set default_enabled = true
- where key in ('employee_team_chat', 'employee_pharmacy_topics');
+-- Pharmacy Chat is available to everyone by default…
+update public.features set default_enabled = true  where key = 'employee_pharmacy_topics';
+-- …Team Chat stays hidden until the super-admin enables it per organization.
+update public.features set default_enabled = false where key = 'employee_team_chat';
+delete from public.tenant_features where feature_key = 'employee_team_chat';
 
 -- 5. Authorization helpers ---------------------------------------------------
 create or replace function public.is_super_admin()
@@ -221,10 +223,7 @@ returns table(feature_key text, enabled boolean)
 language plpgsql stable security definer set search_path = public
 as $$
 begin
-  if not public.is_admin() then raise exception 'FORBIDDEN'; end if;
-  if not public.is_super_admin() and p_organization <> public.my_org() then
-    raise exception 'FORBIDDEN';
-  end if;
+  if not public.is_super_admin() then raise exception 'FORBIDDEN'; end if;
   return query
     select f.key, coalesce(tf.enabled, f.default_enabled)
       from public.features f
@@ -241,10 +240,7 @@ returns void
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if not public.is_admin() then raise exception 'FORBIDDEN'; end if;
-  if not public.is_super_admin() and p_organization <> public.my_org() then
-    raise exception 'FORBIDDEN';
-  end if;
+  if not public.is_super_admin() then raise exception 'FORBIDDEN'; end if;
   delete from public.tenant_features
    where organization = p_organization and feature_key = p_feature_key;
   insert into public.tenant_features (organization, feature_key, enabled)

@@ -69,8 +69,8 @@ export function ThreadFilters({
         <input
           value={term}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search topics"
-          aria-label="Search topics"
+          placeholder="Search chats"
+          aria-label="Search chats"
           className="w-full rounded-btn border border-line bg-sunken py-2.5 pl-9 pr-3 text-[15px] text-ink placeholder:text-muted/60 focus:border-accent focus:outline-none"
         />
       </div>

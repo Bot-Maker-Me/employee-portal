@@ -28,7 +28,7 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 ## Roles & Approval
 - `profiles.role`: `employee` | `admin` | `super_admin`. `profiles.status`: `pending` | `active`.
 - `super_admin` is the platform owner (no `organization` required): creates/deletes organizations, approves users, assigns organizations, toggles features for any org.
-- `admin` manages users and features for their own `organization` only.
+- `admin` manages users for their own `organization`; only `super_admin` toggles feature flags.
 - Anyone can self-register at `/signup`; new profiles start `pending` and see `PendingApproval` until approved. Only `active` profiles enter the portal.
 - Admin actions run through `SECURITY DEFINER` RPCs (`admin_*`) that re-check the caller's role server-side — the client never uses a service-role key.
 

@@ -20,7 +20,7 @@ export default async function NewTopicPage() {
 
   const flags = await getFeatureFlags(profile.organization);
   if (!flags.employee_pharmacy_topics) {
-    return <FeatureDisabled label="Pharmacy Topics" />;
+    return <FeatureDisabled label="Pharmacy Chat" />;
   }
 
   return (
@@ -30,12 +30,12 @@ export default async function NewTopicPage() {
         className="label-mono inline-flex items-center gap-2 text-muted transition-colors hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to topics
+        Back to chats
       </Link>
 
       <div>
-        <SectionMarker index="03" label="New topic" />
-        <h1 className="mt-4 font-serif text-3xl text-ink">Start a topic</h1>
+        <SectionMarker index="03" label="New chat" />
+        <h1 className="mt-4 font-serif text-3xl text-ink">Start a chat</h1>
       </div>
 
       <div className="flex max-w-2xl items-start gap-3 rounded-ledger border border-accent/40 bg-accent-tint px-4 py-3">

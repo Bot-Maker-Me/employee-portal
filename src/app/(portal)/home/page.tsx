@@ -54,7 +54,7 @@ export default async function HomePage() {
               <ActionCard
                 href="/pharmacy"
                 icon={MessagesSquare}
-                title="Start a topic with the pharmacy"
+                title="Chat with the pharmacy"
                 description="Open a tracked question — orders, deliveries, clinical queries."
               />
             )}
@@ -84,7 +84,7 @@ export default async function HomePage() {
         {activity.length === 0 ? (
           <div className="mt-5 rounded-ledger border border-line bg-raised p-6">
             <p className="text-[14px] text-muted">
-              No recent activity yet. Start a topic or message a colleague and it
+              No recent activity yet. Start a chat or message a colleague and it
               will appear here.
             </p>
           </div>
