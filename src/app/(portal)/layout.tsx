@@ -49,8 +49,8 @@ export default async function PortalLayout({
   const badges = { "/pharmacy": unreadTopics, "/team": unreadChannels };
 
   return (
-    <div className="md:grid md:min-h-dvh md:grid-cols-[16rem_1fr]">
-      <aside className="hidden border-r border-line md:flex md:flex-col md:py-4">
+    <div className="md:grid md:h-dvh md:grid-cols-[16rem_1fr]">
+      <aside className="hidden border-r border-line md:flex md:min-h-0 md:flex-col md:overflow-y-auto md:py-4">
         <div className="px-6 pb-6">
           <Wordmark />
         </div>
@@ -60,14 +60,18 @@ export default async function PortalLayout({
         <UserFooter profile={profile} />
       </aside>
 
-      <div className="flex min-h-dvh flex-col">
+      <div className="flex h-dvh flex-col">
         <header className="flex items-center gap-3 border-b border-line px-4 py-3 md:hidden">
           <Wordmark />
         </header>
 
         <LiveTicker items={tickerItems} />
 
-        <main className="flex-1">{children}</main>
+        {/* The shell owns the viewport height, so scrolling happens here (and
+            chats with a bounded height can scroll their own message list). */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {children}
+        </main>
 
         <div className="md:hidden">
           <PortalTabBar flags={flags} badges={badges} isAdmin={admin} />

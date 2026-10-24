@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -10,7 +11,13 @@ import {
 import Link from "next/link";
 import { ArrowLeft, Loader2, RefreshCw, Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatClock, formatFullStamp } from "@/lib/format";
+import {
+  dayKey,
+  formatClock,
+  formatDayLabel,
+  formatDayStamp,
+  formatFullStamp,
+} from "@/lib/format";
 import { sendPharmacyMessage } from "@/lib/pharma/actions";
 import type { PharmaMessage, PharmaThread } from "@/lib/pharma/chat";
 import { cn } from "@/lib/utils";
@@ -181,7 +188,7 @@ export function ThreadView({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-start gap-4 border-b border-line p-5 md:p-8">
         <Link
           href="/pharmacy"
@@ -194,8 +201,8 @@ export function ThreadView({
           <h1 className="truncate font-serif text-2xl text-ink">
             {thread.topic ?? "(no subject)"}
           </h1>
-          <p className="label-mono mt-1 text-muted">
-            {pharmacyName}
+          <p className="label-mono mt-1 text-muted" suppressHydrationWarning>
+            {pharmacyName} · started {formatDayStamp(thread.created_at)}
             {thread.status === "closed" ? " · closed" : " · live"}
           </p>
         </div>
@@ -218,39 +225,59 @@ export function ThreadView({
         className="flex-1 space-y-4 overflow-y-auto px-5 py-6 md:px-8"
         aria-live="polite"
       >
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const mine = message.sender_side === "employee";
+          const previous = messages[index - 1];
+          const startsDay =
+            !previous ||
+            dayKey(previous.created_at) !== dayKey(message.created_at);
           return (
-            <div
-              key={message.id}
-              className={cn("flex flex-col", mine ? "items-end" : "items-start")}
-            >
+            <Fragment key={message.id}>
+              {startsDay && (
+                <div className="flex items-center gap-3 pt-1">
+                  <span className="h-px flex-1 bg-line" aria-hidden="true" />
+                  <span
+                    className="label-mono text-muted"
+                    suppressHydrationWarning
+                  >
+                    {formatDayLabel(message.created_at)}
+                  </span>
+                  <span className="h-px flex-1 bg-line" aria-hidden="true" />
+                </div>
+              )}
               <div
-                className={cn(
-                  "max-w-[85%] animate-rise rounded-ledger px-4 py-3",
-                  mine
-                    ? "bg-accent-tint text-ink ring-1 ring-inset ring-accent/30"
-                    : "bg-paper text-paper-ink shadow-ledger",
-                  message.pending && "opacity-60",
-                )}
+                className={cn("flex flex-col", mine ? "items-end" : "items-start")}
               >
-                <p
+                <div
                   className={cn(
-                    "label-mono mb-1.5",
-                    mine ? "text-accent-soft" : "text-paper-ink/50",
+                    "max-w-[85%] animate-rise rounded-ledger px-4 py-3",
+                    mine
+                      ? "bg-accent-tint text-ink ring-1 ring-inset ring-accent/30"
+                      : "bg-paper text-paper-ink shadow-ledger",
+                    message.pending && "opacity-60",
                   )}
                 >
-                  {mine ? "You" : "Pharmacy"} · {formatClock(message.created_at)}
-                  {message.pending ? " · sending" : ""}
-                </p>
-                <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                  {message.body}
-                </p>
+                  <p
+                    className={cn(
+                      "label-mono mb-1.5",
+                      mine ? "text-accent-soft" : "text-paper-ink/50",
+                    )}
+                  >
+                    {mine ? "You" : "Pharmacy"} · {formatClock(message.created_at)}
+                    {message.pending ? " · sending" : ""}
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                    {message.body}
+                  </p>
+                </div>
+                <span
+                  className="label-mono mt-1 text-muted"
+                  suppressHydrationWarning
+                >
+                  {formatFullStamp(message.created_at)}
+                </span>
               </div>
-              <span className="label-mono mt-1 text-muted">
-                {formatFullStamp(message.created_at)}
-              </span>
-            </div>
+            </Fragment>
           );
         })}
       </div>
