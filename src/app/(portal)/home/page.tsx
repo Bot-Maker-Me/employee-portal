@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MessagesSquare, Users } from "lucide-react";
@@ -38,7 +39,7 @@ export default async function HomePage() {
     <div className="animate-rise space-y-10 p-5 md:p-8">
       <header>
         <SectionMarker index="01" label="Overview" />
-        <h1 className="mt-5 font-serif text-3xl leading-tight text-ink sm:text-4xl">
+        <h1 className="text-reveal mt-5 font-serif text-3xl leading-tight text-ink sm:text-4xl">
           Welcome back, <span className="text-accent">{firstName}</span>.
         </h1>
         <p className="label-mono mt-3 text-muted">{organization}</p>
@@ -90,11 +91,15 @@ export default async function HomePage() {
           </div>
         ) : (
           <ul className="mt-5 divide-y divide-line overflow-hidden rounded-ledger border border-line bg-raised">
-            {activity.map((item) => (
-              <li key={item.id}>
+            {activity.map((item, index) => (
+              <li
+                key={item.id}
+                className="animate-rise stagger"
+                style={{ "--i": index } as CSSProperties}
+              >
                 <Link
                   href={item.href}
-                  className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-sunken"
+                  className="flex items-center gap-4 px-5 py-3.5 transition-all duration-200 ease-out hover:bg-sunken hover:pl-6"
                 >
                   <span
                     className="label-mono w-20 shrink-0 text-muted"

@@ -51,15 +51,49 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "rise-sm": {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.94)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        "slide-down": {
+          from: { opacity: "0", transform: "translateY(-6px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "draw-line": {
+          from: { transform: "scaleX(0)" },
+          to: { transform: "scaleX(1)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
+        flow: {
+          "0%": { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "200% 50%" },
+        },
         "pulse-dot": {
           "0%, 100%": { opacity: "1", boxShadow: "0 0 0 0 var(--accent-tint)" },
           "50%": { opacity: "0.72", boxShadow: "0 0 0 6px var(--accent-tint)" },
         },
+        "bounce-dot": {
+          "0%, 80%, 100%": { transform: "translateY(0)", opacity: "0.45" },
+          "40%": { transform: "translateY(-3px)", opacity: "1" },
+        },
       },
       animation: {
         "fade-in": "fade-in 320ms ease-out both",
-        rise: "rise 360ms ease-out both",
+        rise: "rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        "rise-sm": "rise-sm 320ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        "scale-in": "scale-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        "slide-down": "slide-down 260ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        "draw-line": "draw-line 620ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        shimmer: "shimmer 1.6s ease-in-out infinite",
+        flow: "flow 7s linear infinite",
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
+        "bounce-dot": "bounce-dot 1.2s ease-in-out infinite",
       },
     },
   },

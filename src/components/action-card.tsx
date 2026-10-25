@@ -15,16 +15,16 @@ export function ActionCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col justify-between gap-6 rounded-ledger border border-line bg-raised p-6 shadow-raised transition-colors hover:border-accent"
+      className="group hover-lift flex flex-col justify-between gap-6 rounded-ledger border border-line bg-raised p-6 shadow-raised hover:border-accent hover:shadow-[0_30px_54px_-32px_var(--accent)]"
     >
-      <span className="grid h-10 w-10 place-items-center rounded-btn bg-accent-tint text-accent-soft">
+      <span className="grid h-10 w-10 place-items-center rounded-btn bg-accent-tint text-accent-soft transition-transform duration-300 ease-out group-hover:-rotate-3 group-hover:scale-105">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </span>
       <span>
         <span className="flex items-center gap-2 font-serif text-xl text-ink">
           {title}
           <ArrowRight
-            className="h-4 w-4 text-accent-soft transition-transform group-hover:translate-x-1"
+            className="h-4 w-4 text-accent-soft transition-transform duration-300 ease-out group-hover:translate-x-1"
             aria-hidden="true"
           />
         </span>

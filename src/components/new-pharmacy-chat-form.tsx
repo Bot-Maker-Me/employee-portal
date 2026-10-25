@@ -98,7 +98,7 @@ export function NewPharmacyChatForm({
       {error && (
         <p
           role="alert"
-          className="rounded-btn border border-accent/60 bg-accent-tint px-3.5 py-2.5 text-[13px] text-ink"
+          className="animate-slide-down rounded-btn border border-accent/60 bg-accent-tint px-3.5 py-2.5 text-[13px] text-ink"
         >
           {error}
         </p>

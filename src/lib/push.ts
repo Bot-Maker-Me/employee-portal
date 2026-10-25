@@ -1,11 +1,21 @@
 /**
- * Web-push helpers. The VAPID public key is read directly from
- * process.env at call time and never hardcoded.
+ * Web-push helpers.
+ *
+ * The VAPID *public* key only identifies this server to the push service, so it
+ * is safe to ship to the browser: it is read from NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ * and falls back to the project key so notifications work out of the box.
+ *
+ * The VAPID *private* key signs push requests. It lives only in the server
+ * environment (VAPID_PRIVATE_KEY) and is never exposed to the client.
  */
+const FALLBACK_VAPID_PUBLIC_KEY =
+  "BLA4-5tiOD0BZo0RUpvA-vijqTP-I2jXXbcT7Y6tcR0K7Hflg7a3bcS6iItJxQiECrkaDsL6jkDZbOYyYCX3YW4";
 
-/** Returns the trimmed VAPID public key if it looks valid, else null. */
+/** Returns a valid, trimmed VAPID public key, else null. */
 export function getVapidPublicKey(): string | null {
-  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? "";
+  const key =
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
+    FALLBACK_VAPID_PUBLIC_KEY;
   if (!key) return null;
   // An uncompressed P-256 point: starts with "B", ~87 URL-safe base64 chars.
   if (!/^B[A-Za-z0-9_-]{80,100}$/.test(key)) return null;

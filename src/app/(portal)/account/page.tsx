@@ -4,6 +4,7 @@ import { getProfile, isAdmin as isAdminUser } from "@/lib/profile";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SectionMarker } from "@/components/section-marker";
 import { NotificationSettings } from "@/components/notification-settings";
+import { isPushSendConfigured } from "@/lib/push-server";
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
@@ -47,7 +48,11 @@ export default async function AccountPage() {
         </dl>
       </section>
 
-      <NotificationSettings userId={user.id} isAdmin={isAdmin} />
+      <NotificationSettings
+        userId={user.id}
+        isAdmin={isAdmin}
+        pushSendReady={isPushSendConfigured()}
+      />
 
       <section className="max-w-2xl space-y-3">
         <SectionMarker index="06" label="Session" />

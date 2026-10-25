@@ -8,6 +8,7 @@ import { LiveTicker } from "@/components/live-ticker";
 import { UserFooter } from "@/components/user-footer";
 import { Wordmark } from "@/components/wordmark";
 import { IdleTimeout } from "@/components/idle-timeout";
+import { PushWatcher } from "@/components/push-watcher";
 import { UnlinkedAccount } from "@/components/unlinked-account";
 import { PendingApproval } from "@/components/pending-approval";
 import type { FeatureFlags } from "@/lib/features";
@@ -50,7 +51,7 @@ export default async function PortalLayout({
 
   return (
     <div className="md:grid md:h-dvh md:grid-cols-[16rem_1fr]">
-      <aside className="hidden border-r border-line md:flex md:min-h-0 md:flex-col md:overflow-y-auto md:py-4">
+      <aside className="scroll-slim hidden border-r border-line md:flex md:min-h-0 md:flex-col md:overflow-y-auto md:py-4">
         <div className="px-6 pb-6">
           <Wordmark />
         </div>
@@ -79,6 +80,7 @@ export default async function PortalLayout({
       </div>
 
       <IdleTimeout />
+      <PushWatcher userId={user.id} />
     </div>
   );
 }

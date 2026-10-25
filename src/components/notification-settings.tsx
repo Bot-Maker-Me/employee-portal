@@ -17,9 +17,11 @@ type Permission = "unsupported" | "default" | "granted" | "denied";
 export function NotificationSettings({
   userId,
   isAdmin,
+  pushSendReady,
 }: {
   userId: string;
   isAdmin: boolean;
+  pushSendReady: boolean;
 }) {
   const [permission, setPermission] = useState<Permission>("default");
   const [supported, setSupported] = useState(true);
@@ -130,6 +132,12 @@ export function NotificationSettings({
         setError("We couldn’t save your subscription. Please try again.");
       } else {
         setMessage("Notifications are enabled on this device.");
+        // Prove the whole path immediately with a real push from the server.
+        await fetch("/api/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "test" }),
+        }).catch(() => undefined);
       }
     } catch {
       setError("We couldn’t enable notifications on this device.");
@@ -170,18 +178,28 @@ export function NotificationSettings({
     setMessage(null);
     setBusy("test");
     try {
-      const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification("Employee Portal", {
-        body: "This is a test alert. Notifications are working on this device.",
-        tag: "test-alert",
-        icon: "/icon.svg",
-        badge: "/icon.svg",
+      const response = await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "test" }),
       });
-      setMessage("Test alert sent to this device.");
+      if (!response.ok) {
+        setError(
+          "The server can’t send alerts yet. An administrator needs to add the private VAPID key.",
+        );
+        return;
+      }
+      const data = (await response.json()) as { sent?: number };
+      setMessage(
+        data.sent
+          ? `Test alert pushed to ${data.sent} device${data.sent === 1 ? "" : "s"}.`
+          : "No device is subscribed yet — enable notifications on a device first.",
+      );
     } catch {
-      setError("We couldn’t show a test alert. Enable notifications first.");
+      setError("We couldn’t reach the notification service.");
     } finally {
       setBusy(null);
+      void refresh();
     }
   }
 
@@ -272,6 +290,7 @@ export function NotificationSettings({
           <dl className="mt-6 space-y-1.5 border-t border-line pt-5">
             <p className="label-mono text-accent-soft">Diagnostic · admin</p>
             <Row label="Public key configured" value={isVapidKeyConfigured() ? "Yes" : "No"} />
+            <Row label="Private key configured" value={pushSendReady ? "Yes" : "No"} />
             <Row label="Key prefix" value={vapidKeyPrefix() || "—"} />
             <Row label="Service worker registered" value={swRegistered ? "Yes" : "No"} />
             <Row label="Permission" value={permission} />

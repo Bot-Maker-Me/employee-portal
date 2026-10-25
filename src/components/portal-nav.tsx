@@ -80,15 +80,21 @@ export function PortalSidebar({
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group flex items-center gap-3 rounded-btn px-3 py-2.5 text-[14px] transition-colors",
+              "group relative flex items-center gap-3 rounded-btn px-3 py-2.5 text-[14px] transition-all duration-200 ease-out hover:translate-x-0.5",
               active
                 ? "bg-accent-tint text-ink"
                 : "text-muted hover:bg-raised hover:text-ink",
             )}
           >
+            {active && (
+              <span
+                className="absolute left-0 top-1/2 h-5 w-[2px] animate-scale-in -translate-y-1/2 rounded-full bg-accent"
+                aria-hidden="true"
+              />
+            )}
             <Icon
               className={cn(
-                "h-[18px] w-[18px]",
+                "h-[18px] w-[18px] transition-transform duration-200 ease-out group-hover:scale-110",
                 active ? "text-accent-soft" : "text-muted",
               )}
               aria-hidden="true"
@@ -133,17 +139,26 @@ export function PortalTabBar({
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex flex-1 flex-col items-center gap-1 px-1 py-2.5",
+              "relative flex flex-1 flex-col items-center gap-1 px-1 py-2.5 transition-all duration-200 ease-out active:scale-95",
               active ? "text-ink" : "text-muted",
             )}
           >
+            {active && (
+              <span
+                className="absolute top-0 h-0.5 w-8 animate-scale-in rounded-full bg-accent"
+                aria-hidden="true"
+              />
+            )}
             <Icon
-              className={cn("h-5 w-5", active && "text-accent-soft")}
+              className={cn(
+                "h-5 w-5 transition-transform duration-200 ease-out",
+                active && "scale-110 text-accent-soft",
+              )}
               aria-hidden="true"
             />
             <span className="label-mono text-[10px]">{item.short}</span>
             {badge > 0 && (
-              <span className="absolute right-1/4 top-1.5 h-2 w-2 rounded-full bg-accent" />
+              <span className="absolute right-1/4 top-1.5 h-2 w-2 animate-pulse-dot rounded-full bg-accent" />
             )}
           </Link>
         );

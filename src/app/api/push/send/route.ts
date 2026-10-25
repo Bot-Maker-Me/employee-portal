@@ -1,0 +1,103 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/profile";
+import { getFeatureFlags } from "@/lib/features";
+import { isPharmaConfigured } from "@/lib/pharma/client";
+import { listPharmacyReplies, listThreads } from "@/lib/pharma/chat";
+import {
+  isPushSendConfigured,
+  sendPush,
+  type PushTarget,
+} from "@/lib/push-server";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Web-push dispatcher. Only ever notifies the caller's OWN devices, which is why
+ * it needs no cross-user access and no service-role key.
+ *
+ *   { mode: "test" }                          → a test alert, to verify the keys
+ *   { mode: "check", since, hidden }          → alert about new pharmacy replies
+ *
+ * Payloads deliberately carry no message content: they can surface on a lock
+ * screen, so they only ever say that something needs attention.
+ */
+export async function POST(request: Request) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  }
+
+  const profile = await getProfile(user.id);
+  if (!profile?.organization) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
+  const { data: rows } = await supabase
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth")
+    .eq("user_id", user.id);
+  const devices = (rows ?? []) as PushTarget[];
+
+  if (!isPushSendConfigured()) {
+    return NextResponse.json({ error: "NOT_CONFIGURED" }, { status: 503 });
+  }
+
+  let body: { mode?: string; since?: string | null; hidden?: boolean } = {};
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    // No/!invalid body: fall through to the default mode below.
+  }
+
+  if (body.mode === "test") {
+    const { sent, stale } = await sendPush(devices, {
+      title: "Employee Portal",
+      body: "Test alert — notifications work on this device.",
+      url: "/account",
+      tag: "test-alert",
+    });
+    if (stale.length > 0) {
+      await supabase.from("push_subscriptions").delete().in("endpoint", stale);
+    }
+    return NextResponse.json({ ok: true, sent, devices: devices.length });
+  }
+
+  const cursor = new Date().toISOString();
+
+  const flags = await getFeatureFlags(profile.organization);
+  if (!flags.employee_pharmacy_topics || !isPharmaConfigured()) {
+    return NextResponse.json({ cursor, notified: 0 });
+  }
+
+  // First run just establishes the cursor — never alert for old history.
+  const since = body.since ?? null;
+  if (!since) return NextResponse.json({ cursor, notified: 0 });
+
+  // Alerts only fire while the portal is in a background tab; if the user is
+  // looking at the app, the open chat already updates itself.
+  if (!body.hidden) return NextResponse.json({ cursor, notified: 0 });
+
+  const threads = await listThreads(profile.organization);
+  const replies = await listPharmacyReplies(
+    threads.map((thread) => thread.id),
+    since,
+  );
+  if (replies.length === 0) return NextResponse.json({ cursor, notified: 0 });
+
+  const newest = replies[0];
+  const { sent, stale } = await sendPush(devices, {
+    title: "New reply from the pharmacy",
+    body: "Open the Employee Portal to read it.",
+    url: `/pharmacy/${newest.thread_id}`,
+    tag: `pharmacy-${newest.thread_id}`,
+  });
+  if (stale.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("endpoint", stale);
+  }
+
+  return NextResponse.json({ cursor, notified: sent });
+}

@@ -75,6 +75,28 @@ export async function listThreadMessages(
   return ((data ?? []) as PharmaMessage[]).reverse();
 }
 
+/**
+ * Pharmacy-side replies newer than `since`, across the given threads. Used to
+ * decide whether an alert is worth sending — never to render content.
+ */
+export async function listPharmacyReplies(
+  threadIds: string[],
+  since: string,
+): Promise<PharmaMessage[]> {
+  if (threadIds.length === 0) return [];
+  const supabase = createPharmaClient();
+  const { data, error } = await supabase
+    .from("topic_messages")
+    .select("id, thread_id, sender_side, created_at")
+    .in("thread_id", threadIds)
+    .eq("sender_side", "pharmacy")
+    .gt("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return (data ?? []) as PharmaMessage[];
+}
+
 export async function getThread(id: string): Promise<{
   thread: PharmaThread;
   messages: PharmaMessage[];

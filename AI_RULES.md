@@ -18,6 +18,7 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - Signature elements: `SectionMarker` (crimson line + mono `§ 0X · LABEL`), `LiveTicker` (pulsing crimson dot + `LIVE` + mono status), cream `LedgerCard` (`bg-paper` / `text-paper-ink`).
 - Typography: serif headlines, 15px muted body, mono UPPERCASE labels (`.label-mono`). Buttons are rectangular (3px radius), mono uppercase; focus rings use the accent color.
 - Decorative tilt only on non-interactive cards. Respect `prefers-reduced-motion` (handled globally).
+- **Motion kit**: shared primitives live in `tailwind.config.ts` + `globals.css` — `animate-rise / rise-sm / scale-in / slide-down / draw-line / shimmer / flow / bounce-dot`, plus `.stagger` (reads a `--i` index so lists cascade), `.hover-lift`, `.link-underline`, `.text-reveal`, `.scroll-slim`, and the ambient drifting glow. Compose these instead of inventing one-off animations.
 
 ## Structure
 - App Router pages in `src/app/`; public auth pages are `login`, `signup`, `forgot-password`, `reset-password`, `auth/callback`. The authenticated area is the `src/app/(portal)/` route group (`home`, `pharmacy`, `team`, `account`, `admin`).
@@ -38,6 +39,7 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 ## Security & Privacy (healthcare)
 - Server-side session checks in `middleware.ts`; unauthenticated users are redirected to `/login`.
 - **Never** expose `SUPABASE_SERVICE_ROLE_KEY` to the client or `NEXT_PUBLIC_*`. Client env is only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
+- **Push notifications**: the VAPID public key is client-safe (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, with a project fallback in `src/lib/push.ts`); the VAPID private key is server-only — `VAPID_PRIVATE_KEY`, never `NEXT_PUBLIC_*`, read by `src/lib/push-server.ts`. `POST /api/push/send` only ever alerts the caller's own devices (table `push_subscriptions`, own-rows RLS), so no service-role key is needed. Push payloads carry **no message content** — they can surface on a lock screen.
 - No message content in logs, errors, or analytics. Render message text as plain text — never `dangerouslySetInnerHTML`.
 - Rate-limit sending (max 20 messages/minute per user). Idle sign-out after 30 minutes (warn at 28).
 - **Fail closed**: if the profile can't load render `UnlinkedAccount`; if it isn't `active` render `PendingApproval`; if `active` but with no `organization` (and not `super_admin`) render `UnlinkedAccount`. Never render portal data in these states.

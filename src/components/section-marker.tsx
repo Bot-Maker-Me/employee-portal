@@ -15,8 +15,11 @@ export function SectionMarker({
 }) {
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <span className="h-px w-8 shrink-0 bg-accent" aria-hidden="true" />
-      <span className="label-mono text-accent-soft">
+      <span
+        className="h-px w-8 shrink-0 origin-left animate-draw-line bg-accent"
+        aria-hidden="true"
+      />
+      <span className="label-mono animate-fade-in text-accent-soft">
         § {index} · {label}
       </span>
     </div>

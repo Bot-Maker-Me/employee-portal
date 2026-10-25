@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -42,7 +43,7 @@ export default async function PharmacyChatPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <SectionMarker index="03" label="Pharmacy" />
-          <h1 className="mt-4 font-serif text-3xl text-ink">Pharmacy Chat</h1>
+          <h1 className="text-reveal mt-4 font-serif text-3xl text-ink">Pharmacy Chat</h1>
           <p className="mt-1.5 text-[14px] text-muted">
             {threads.length}{" "}
             {threads.length === 1 ? "conversation" : "conversations"} with the
@@ -67,11 +68,15 @@ export default async function PharmacyChatPage() {
         </div>
       ) : (
         <ul className="divide-y divide-line overflow-hidden rounded-ledger border border-line bg-raised">
-          {threads.map((thread) => (
-            <li key={thread.id}>
+          {threads.map((thread, index) => (
+            <li
+              key={thread.id}
+              className="animate-rise stagger"
+              style={{ "--i": index } as CSSProperties}
+            >
               <Link
                 href={`/pharmacy/${thread.id}`}
-                className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-sunken"
+                className="flex items-start gap-4 px-5 py-4 transition-all duration-200 ease-out hover:bg-sunken hover:pl-6"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">

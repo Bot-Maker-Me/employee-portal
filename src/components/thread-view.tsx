@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
@@ -198,7 +199,7 @@ export function ThreadView({
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-serif text-2xl text-ink">
+          <h1 className="text-reveal truncate font-serif text-2xl text-ink">
             {thread.topic ?? "(no subject)"}
           </h1>
           <p className="label-mono mt-1 text-muted" suppressHydrationWarning>
@@ -222,7 +223,7 @@ export function ThreadView({
       <div
         ref={listRef}
         onScroll={onScroll}
-        className="flex-1 space-y-4 overflow-y-auto px-5 py-6 md:px-8"
+        className="scroll-slim flex-1 space-y-4 overflow-y-auto px-5 py-6 md:px-8"
         aria-live="polite"
       >
         {messages.map((message, index) => {
@@ -234,7 +235,7 @@ export function ThreadView({
           return (
             <Fragment key={message.id}>
               {startsDay && (
-                <div className="flex items-center gap-3 pt-1">
+                <div className="flex animate-fade-in items-center gap-3 pt-1">
                   <span className="h-px flex-1 bg-line" aria-hidden="true" />
                   <span
                     className="label-mono text-muted"
@@ -250,12 +251,13 @@ export function ThreadView({
               >
                 <div
                   className={cn(
-                    "max-w-[85%] animate-rise rounded-ledger px-4 py-3",
+                    "max-w-[85%] animate-rise stagger rounded-ledger px-4 py-3 transition-[opacity,box-shadow] duration-300",
                     mine
                       ? "bg-accent-tint text-ink ring-1 ring-inset ring-accent/30"
                       : "bg-paper text-paper-ink shadow-ledger",
                     message.pending && "opacity-60",
                   )}
+                  style={{ "--i": Math.min(index, 8) } as CSSProperties}
                 >
                   <p
                     className={cn(
@@ -288,7 +290,7 @@ export function ThreadView({
             {error}
           </p>
         )}
-        <div className="rounded-ledger border border-line bg-sunken p-3">
+        <div className="rounded-ledger border border-line bg-sunken p-3 transition-colors duration-200 focus-within:border-accent/60">
           <textarea
             rows={3}
             value={body}
