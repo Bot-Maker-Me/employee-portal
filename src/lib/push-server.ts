@@ -1,4 +1,4 @@
-import webpush from "web-push";
+import { sendNotification, setVapidDetails } from "web-push";
 import { getVapidPublicKey } from "@/lib/push";
 
 /**
@@ -47,7 +47,7 @@ function ensureConfigured() {
   const privateKey = getPrivateKey();
   if (!publicKey || !privateKey) throw new Error("PUSH_NOT_CONFIGURED");
   if (!configured) {
-    webpush.setVapidDetails(getSubject(), publicKey, privateKey);
+    setVapidDetails(getSubject(), publicKey, privateKey);
     configured = true;
   }
 }
@@ -72,7 +72,7 @@ export async function sendPush(
         return;
       }
       try {
-        await webpush.sendNotification(
+        await sendNotification(
           {
             endpoint: target.endpoint,
             keys: { p256dh: target.p256dh, auth: target.auth },

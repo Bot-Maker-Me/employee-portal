@@ -132,29 +132,6 @@
     transform: translateY(0) scale(0.995);
   }
 
-  /* Underline that wipes in from the left. */
-  .link-underline {
-    position: relative;
-  }
-
-  .link-underline::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    bottom: -3px;
-    left: 0;
-    height: 1px;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 320ms var(--ease-expo);
-  }
-
-  .link-underline:hover::after,
-  .link-underline[aria-current="page"]::after {
-    transform: scaleX(1);
-  }
-
   /* Light sweep that runs across primary buttons on hover. */
   .sheen {
     position: relative;
