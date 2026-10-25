@@ -2,7 +2,6 @@ import Link from "next/link";
 import { LedgerPreview } from "@/components/ledger-preview";
 import { LoginForm } from "@/components/login-form";
 import { SectionMarker } from "@/components/section-marker";
-import { Wordmark } from "@/components/wordmark";
 
 export default function LoginPage({
   searchParams,
@@ -14,48 +13,74 @@ export default function LoginPage({
   const timedOut = searchParams.reason === "timeout";
 
   return (
-    <main className="mx-auto grid min-h-dvh w-full max-w-6xl items-center gap-12 px-5 py-10 lg:grid-cols-2 lg:gap-16 lg:px-8">
-      <section className="animate-rise">
-        <Wordmark />
-        <SectionMarker index="01" label="Sign in" className="mt-10" />
-        <h1 className="mt-5 max-w-lg font-serif text-4xl leading-[1.05] text-ink sm:text-5xl">
-          Every conversation, <span className="text-accent">LOGGED</span> and
-          secure.
-        </h1>
-        <p className="mt-5 max-w-md text-[15px] text-muted">
-          A calm, auditable space for pharmacy teams — internal chat and
-          pharmacy chat channels, kept in a single register.
-        </p>
-        <div className="mt-10 hidden lg:block">
-          <LedgerPreview />
-        </div>
-      </section>
+    <main className="relative mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center px-5 py-14 lg:px-8">
+      <div className="grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
+        {/* ---------------------------------------------------------------
+            Left column — the editorial statement.
+        ---------------------------------------------------------------- */}
+        <section className="animate-rise">
+          <p className="label-mono text-accent">Employee Portal</p>
 
-      <section className="animate-rise">
-        <div className="rounded-ledger border border-line bg-raised p-6 shadow-raised sm:p-8">
-          <SectionMarker index="02" label="Credentials" />
-          <h2 className="mt-4 font-serif text-2xl text-ink">Access the portal</h2>
-          <p className="mt-1.5 text-[14px] text-muted">
-            Sign in, or{" "}
-            <Link
-              href="/signup"
-              className="text-ink underline-offset-4 hover:text-accent-soft hover:underline"
-            >
-              create an account
-            </Link>{" "}
-            — new accounts are approved by an administrator.
+          <SectionMarker index="01" label="Sign in" className="mt-7" />
+
+          <h1 className="mt-6 max-w-[32rem] font-serif text-[2.6rem] leading-[1.06] tracking-[-0.012em] text-ink sm:text-[3.05rem] lg:text-[3.35rem]">
+            Every conversation,{" "}
+            <span className="text-glow text-accent">LOGGED</span> and secure.
+          </h1>
+
+          <p className="mt-6 max-w-md text-[15px] leading-relaxed text-muted">
+            A calm, auditable space for pharmacy teams — internal chat and
+            pharmacy chat channels, kept in a single register.
           </p>
-          {timedOut && (
-            <p
-              role="status"
-              className="mt-4 rounded-btn border border-line bg-sunken px-3.5 py-2.5 text-[13px] text-muted"
-            >
-              You were signed out after a period of inactivity.
+
+          <div className="mt-12 hidden lg:block">
+            <LedgerPreview />
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------
+            Right column — the credentials card.
+        ---------------------------------------------------------------- */}
+        <section
+          className="animate-rise"
+          style={{ animationDelay: "110ms" }}
+        >
+          <div className="relative overflow-hidden rounded-panel border border-glass-border bg-glass p-7 shadow-glass backdrop-blur-2xl sm:p-9">
+            {/* A fine line of light along the top edge of the glass. */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)]"
+            />
+
+            <SectionMarker index="02" label="Credentials" />
+
+            <h2 className="mt-5 font-serif text-[1.7rem] leading-tight text-ink sm:text-3xl">
+              Access the portal
+            </h2>
+            <p className="mt-2.5 text-[14px] leading-relaxed text-muted">
+              Sign in, or{" "}
+              <Link
+                href="/signup"
+                className="text-ink underline-offset-4 transition-colors hover:text-accent-soft hover:underline"
+              >
+                create an account
+              </Link>{" "}
+              — new accounts are approved by an administrator.
             </p>
-          )}
-          <LoginForm redirectTo={redirectTo} />
-        </div>
-      </section>
+
+            {timedOut && (
+              <p
+                role="status"
+                className="mt-5 rounded-field border border-line bg-sunken px-4 py-3 text-[13px] text-muted"
+              >
+                You were signed out after a period of inactivity.
+              </p>
+            )}
+
+            <LoginForm redirectTo={redirectTo} />
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
