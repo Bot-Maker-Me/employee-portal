@@ -251,10 +251,10 @@ export function ThreadView({
               >
                 <div
                   className={cn(
-                    "max-w-[85%] animate-rise stagger rounded-ledger px-4 py-3 transition-[opacity,box-shadow] duration-300",
+                    "stagger max-w-[85%] rounded-ledger px-4 py-3 transition-[opacity,box-shadow] duration-300",
                     mine
-                      ? "bg-accent-tint text-ink ring-1 ring-inset ring-accent/30"
-                      : "bg-paper text-paper-ink shadow-ledger",
+                      ? "animate-rise-right bg-accent-tint text-ink ring-1 ring-inset ring-accent/30"
+                      : "animate-rise-left bg-paper text-paper-ink shadow-ledger",
                     message.pending && "opacity-60",
                   )}
                   style={{ "--i": Math.min(index, 8) } as CSSProperties}

@@ -10,7 +10,7 @@ const BASE =
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-accent px-4 py-2.5 text-white border border-transparent hover:-translate-y-px hover:bg-accent-hover hover:shadow-[0_12px_26px_-14px_var(--accent)]",
+    "sheen bg-accent px-4 py-2.5 text-white border border-transparent hover:-translate-y-px hover:bg-accent-hover hover:shadow-[0_12px_26px_-14px_var(--accent)]",
   secondary:
     "bg-transparent px-4 py-2.5 text-ink border border-line hover:-translate-y-px hover:border-accent hover:text-white",
   ghost: "bg-transparent px-3 py-2 text-muted hover:bg-raised hover:text-ink",

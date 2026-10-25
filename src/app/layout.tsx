@@ -33,6 +33,15 @@ export default function RootLayout({
       className={`${playfair.variable} ${manrope.variable} ${jetbrainsMono.variable}`}
     >
       <body>
+        {/* Decorative only: the slowly flowing silk backdrop. */}
+        <div className="silk" aria-hidden="true">
+          <span className="silk-1" />
+          <span className="silk-2" />
+          <span className="silk-3" />
+          <span className="silk-4" />
+          <span className="silk-sheen" />
+          <span className="silk-weave" />
+        </div>
         <ServiceWorkerRegistrar />
         {children}
       </body>
