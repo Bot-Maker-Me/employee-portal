@@ -1,0 +1,235 @@
+# Automated security scan for Supabase web apps.
+# Put this file at: .github/workflows/security.yml
+# Runs on every push, every pull request, once a week, and on demand.
+
+name: Security Scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1" # every Monday, catches newly published vulnerabilities
+
+permissions:
+  contents: read
+
+jobs:
+  # 1. Secrets committed anywhere in the code or git history
+  gitleaks:
+    name: Gitleaks (leaked secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" \
+            -e GIT_CONFIG_COUNT=1 \
+            -e GIT_CONFIG_KEY_0=safe.directory \
+            -e GIT_CONFIG_VALUE_0=/repo \
+            zricethezav/gitleaks:latest detect --source=/repo --redact --verbose
+
+  # 2. Insecure code patterns (SQL injection, XSS, missing checks, etc.)
+  semgrep:
+    name: Semgrep (code vulnerabilities)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config p/owasp-top-ten \
+            --config p/typescript \
+            --config p/react \
+            --metrics=off \
+            --error
+
+  # 3. Vulnerable dependencies, secrets, and misconfigurations
+  trivy:
+    name: Trivy (dependencies and misconfig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy
+        run: |
+          docker run --rm -v "$PWD:/src" aquasec/trivy:latest fs \
+            --scanners vuln,secret,misconfig \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            /src
+
+  # 4. Package manager's own audit
+  dependency-audit:
+    name: npm / pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm audit --audit-level=high
+          elif [ -f pnpm-lock.yaml ]; then
+            npx --yes pnpm audit --audit-level high
+          else
+            echo "::warning::No npm or pnpm lockfile found. Commit your lockfile so dependencies can be audited."
+          fi
+
+  # 5. Supabase-specific scanners (RLS, keys in the bundle, migrations)
+  supabase-scanners:
+    name: Supabase scanners (rlsgate + vibe-shipcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install scanners
+        run: pip install rlsgate vibe-shipcheck
+      - name: rlsgate
+        run: rlsgate scan .
+      - name: vibe-shipcheck
+        run: vibe-shipcheck .
+
+  # 6. Our own checks for the most common AI-generated app mistakes
+  custom-checks:
+    name: Custom Supabase and frontend checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run checks
+        shell: bash
+        run: |
+          fail=0
+          warn() { echo "::warning::$1"; }
+          bad()  { echo "::error::$1"; fail=1; }
+
+          EXCL="--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=build --exclude-dir=.next --exclude-dir=.github"
+
+          echo "== 1. .env files committed to git =="
+          envs=$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -viE 'example|sample|template' || true)
+          if [ -n "$envs" ]; then
+            echo "$envs"
+            bad "Real .env file(s) are committed. Remove them, add to .gitignore, and ROTATE every key inside."
+          fi
+
+          echo "== 2. Secret-looking names in public (client) env variables =="
+          if grep -rIEn $EXCL "(VITE_|NEXT_PUBLIC_|EXPO_PUBLIC_|REACT_APP_)[A-Z0-9_]*(SERVICE|SECRET|PRIVATE|PASSWORD)[A-Z0-9_]*" . 2>/dev/null | grep -v "\.example"; then
+            bad "A secret-looking value is exposed through a public env prefix. Anything with these prefixes ships to every visitor."
+          fi
+
+          echo "== 3. service_role referenced in client source =="
+          for d in src app pages components lib public; do
+            if [ -d "$d" ] && grep -rIniE $EXCL "service_role|SERVICE_ROLE" "$d" 2>/dev/null; then
+              warn "service_role is mentioned under $d/. It must only be used in server code or Edge Functions, never in the browser."
+            fi
+          done
+
+          echo "== 4. Risky frontend patterns =="
+          if grep -rIn $EXCL --include=*.js --include=*.jsx --include=*.ts --include=*.tsx "dangerouslySetInnerHTML" . 2>/dev/null; then
+            warn "dangerouslySetInnerHTML found. Sanitize with DOMPurify or avoid it (XSS risk)."
+          fi
+          if grep -rIn $EXCL --include=*.js --include=*.jsx --include=*.ts --include=*.tsx -E "\beval\(|new Function\(" . 2>/dev/null; then
+            warn "eval / new Function found. Avoid executing dynamic strings."
+          fi
+
+          echo "== 5. Migrations: every created table must enable RLS =="
+          if [ -d supabase/migrations ]; then
+            tables=$(grep -rhiE 'create table( if not exists)? +(public\.)?"?[a-z_0-9]+"? *\(' supabase/migrations \
+              | sed -E 's/.*create table( if not exists)? +(public\.)?"?([a-zA-Z_0-9]+)"? *\(.*/\3/I' \
+              | tr 'A-Z' 'a-z' | sort -u || true)
+            for t in $tables; do
+              if ! grep -rqiE "alter table +(only +)?(if exists +)?(public\.)?\"?$t\"? +enable row level security" supabase/migrations; then
+                bad "Table '$t' is created without ENABLE ROW LEVEL SECURITY. Anyone with the anon key could read it."
+              fi
+            done
+
+            echo "== 6. Wide-open policies =="
+            if grep -rniE "(using|with check) *\( *true *\)" supabase/migrations; then
+              warn "Policy with USING (true) / WITH CHECK (true) found. Fine only for deliberately public read-only data."
+            fi
+            if grep -rniE "to +(anon|public)" supabase/migrations | grep -iE "insert|update|delete|all"; then
+              warn "A write policy appears to be granted to anon/public. Review it."
+            fi
+            if grep -rniE "security +definer" supabase/migrations; then
+              warn "SECURITY DEFINER function found. It runs with elevated rights. Revoke EXECUTE from anon/public and set search_path."
+            fi
+            if grep -rniE "create +(or +replace +)?view" supabase/migrations | grep -viE "security_invoker"; then
+              warn "View found. Make sure it uses WITH (security_invoker = true) so it respects RLS."
+            fi
+          else
+            echo "No supabase/migrations folder found, skipping migration checks."
+            warn "No supabase/migrations folder. Keep your schema as versioned migrations so changes are reviewable and safe."
+          fi
+
+          echo "== 7. Edge Functions config =="
+          if [ -f supabase/config.toml ] && grep -nE "verify_jwt *= *false" supabase/config.toml; then
+            warn "verify_jwt = false on a function. Only acceptable for public webhooks that verify their own signature."
+          fi
+          if [ -d supabase/functions ] && grep -rnE "Access-Control-Allow-Origin.*\*" supabase/functions; then
+            warn "Wildcard CORS in an Edge Function. Restrict it to your own domains."
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo "Custom checks FAILED. See the errors above."
+            exit 1
+          fi
+          echo "Custom checks passed (warnings, if any, still need a human look)."
+
+  # 7. Attack the live database the way an anonymous visitor would (read-only)
+  anon-probe:
+    name: Anon-key probe of live Supabase API
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Probe tables with the anon key
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "SUPABASE_URL / SUPABASE_ANON_KEY secrets not set. Skipping the live probe."
+            exit 0
+          fi
+
+          URL="${SUPABASE_URL%/}"
+          H1="apikey: $SUPABASE_ANON_KEY"
+          H2="Authorization: Bearer $SUPABASE_ANON_KEY"
+
+          spec=$(curl -s -H "$H1" -H "$H2" "$URL/rest/v1/")
+          tables=$(echo "$spec" | jq -r '.paths // {} | keys[] | select(. != "/") | ltrimstr("/")' 2>/dev/null | grep -v '^rpc/' || true)
+          rpcs=$(echo "$spec" | jq -r '.paths // {} | keys[] | select(startswith("/rpc/")) | ltrimstr("/rpc/")' 2>/dev/null || true)
+
+          if [ -z "$tables" ]; then
+            echo "::warning::Could not list tables with the anon key. That is good if intentional, otherwise check the URL and key."
+            exit 0
+          fi
+
+          leaks=0
+          for t in $tables; do
+            code=$(curl -s -o /tmp/resp.json -w "%{http_code}" -H "$H1" -H "$H2" "$URL/rest/v1/$t?select=*&limit=1")
+            if [ "$code" = "200" ] && [ "$(jq 'length' /tmp/resp.json 2>/dev/null)" -gt 0 ] 2>/dev/null; then
+              echo "::error::LEAK: table '$t' returns rows to an anonymous visitor."
+              leaks=1
+            else
+              echo "ok: $t (HTTP $code)"
+            fi
+          done
+
+          if [ -n "$rpcs" ]; then
+            echo "::warning::Functions callable through the API by anon (review each, revoke EXECUTE if not meant to be public): $(echo $rpcs | tr '\n' ' ')"
+          fi
+
+          if [ "$leaks" -ne 0 ]; then
+            echo "Anonymous read access found. Enable RLS and add owner-scoped policies on those tables."
+            echo "Note: an EMPTY table with RLS off will not show here, so still rely on the migration checks."
+            exit 1
+          fi
+          echo "No anonymous data exposure found on tested tables."

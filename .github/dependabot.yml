@@ -1,0 +1,15 @@
+# Put this file at: .github/dependabot.yml
+# GitHub will open pull requests automatically when your packages have security updates.
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
