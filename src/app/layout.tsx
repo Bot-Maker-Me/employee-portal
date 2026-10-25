@@ -39,8 +39,19 @@ export default function RootLayout({
           <span className="silk-2" />
           <span className="silk-3" />
           <span className="silk-4" />
+          <span className="silk-5" />
+          <span className="silk-beam" />
           <span className="silk-sheen" />
           <span className="silk-weave" />
+          <span className="silk-rules" />
+          <span className="silk-grain" />
+          <span className="silk-vignette" />
+          <span className="glint glint-1" />
+          <span className="glint glint-2" />
+          <span className="glint glint-3" />
+          <span className="glint glint-4" />
+          <span className="glint glint-accent glint-5" />
+          <span className="glint glint-accent glint-6" />
         </div>
         <ServiceWorkerRegistrar />
         {children}

@@ -32,12 +32,20 @@
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
-  /* Silk backdrop — deep blues, deliberately dim so text stays crisp. */
-  --silk-1: rgba(52, 98, 176, 0.42);
-  --silk-2: rgba(34, 74, 138, 0.4);
-  --silk-3: rgba(74, 116, 196, 0.26);
-  --silk-4: rgba(126, 172, 232, 0.16);
-  --silk-sheen: rgba(150, 190, 240, 0.12);
+  /* Silk backdrop — deep blues, kept dim so text stays crisp and the
+     crimson accent keeps its contrast. Retune these four to taste. */
+  --silk-1: rgba(44, 82, 148, 0.26);
+  --silk-2: rgba(26, 56, 106, 0.24);
+  --silk-3: rgba(58, 94, 162, 0.15);
+  --silk-4: rgba(98, 138, 198, 0.09);
+  --silk-5: rgba(192, 57, 59, 0.1); /* a whisper of the brand crimson */
+  --silk-sheen: rgba(132, 170, 226, 0.07);
+  --silk-beam: rgba(120, 164, 226, 0.07);
+  --silk-rule: rgba(140, 172, 226, 0.05);
+
+  /* Light points in the fabric. */
+  --glint: rgba(158, 192, 242, 0.5);
+  --glint-accent: rgba(224, 135, 137, 0.42);
 }
 
 @layer base {
@@ -244,10 +252,11 @@ body::before {
 
 /* ---------------------------------------------------------------
    FLOWING SILK BACKDROP
-   Four heavily-blurred blue fields drifting at different speeds, a
-   slow band of light travelling across them, and a fine weave so the
-   surface reads as fabric rather than fog. Screen-blended over the
-   base colour, so it stays dim and never competes with the text.
+   Five heavily-blurred fields drifting at different speeds, a slow band
+   of light travelling across them, a fine weave, faint ledger rules,
+   grain (which dissolves gradient banding) and drifting light points.
+   Everything stays dim and sits behind the content, so text contrast —
+   including the crimson accent — is untouched.
 ---------------------------------------------------------------- */
 @keyframes silk-drift-a {
   0%,
@@ -303,7 +312,7 @@ body::before {
   overflow: hidden;
   pointer-events: none;
   contain: paint;
-  opacity: 0.85;
+  opacity: 0.6;
 }
 
 .silk span {
@@ -311,8 +320,17 @@ body::before {
   display: block;
   border-radius: 50%;
   filter: blur(70px);
-  mix-blend-mode: screen;
-  transform: translateZ(0);
+}
+
+/* Only the layers that actually move get their own compositor layer —
+   giving every layer one would waste GPU memory for no visual gain. */
+.silk-1,
+.silk-2,
+.silk-3,
+.silk-4,
+.silk-5,
+.silk-sheen,
+.silk .glint {
   will-change: transform;
 }
 
@@ -377,29 +395,169 @@ body::before {
   );
 }
 
-/* Vignette: fade the effect out towards the edges so content leads. */
-.silk::after {
-  content: "";
-  position: absolute;
+/* A whisper of the brand crimson so the palette feels deliberate. */
+.silk-5 {
+  right: -10%;
+  bottom: -12%;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle at 50% 50%, var(--silk-5), transparent 70%);
+  animation: silk-drift-a 46s var(--ease-soft) infinite reverse;
+}
+
+/* Light from above: gives the surface a source, so it reads as depth. */
+.silk-beam {
   inset: 0;
+  width: 100%;
+  height: 100%;
   background: radial-gradient(
-    130% 110% at 50% 0%,
-    transparent 50%,
-    rgba(11, 16, 32, 0.65) 100%
+    58% 42% at 50% -6%,
+    var(--silk-beam),
+    transparent 72%
   );
 }
 
-/* Lighter treatment on phones: gentler blur, no weave. */
+/* Faint ledger rules — an editorial detail that keeps the field from
+   feeling empty. They fade out two thirds of the way down. */
+.silk-rules {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-image: repeating-linear-gradient(
+    180deg,
+    var(--silk-rule) 0 1px,
+    transparent 1px 48px
+  );
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 70%);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.9),
+    transparent 70%
+  );
+}
+
+/* Fine grain: dissolves the banding that large blurred gradients produce. */
+.silk-grain {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Vignette, plus a calmer centre so headings and the crimson text keep
+   their contrast where the words actually are. */
+.silk-vignette {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(
+      145% 125% at 50% -10%,
+      transparent 45%,
+      rgba(11, 16, 32, 0.72) 100%
+    ),
+    radial-gradient(72% 62% at 50% 52%, rgba(11, 16, 32, 0.5), transparent 72%);
+}
+
+/* Light points drifting through the fabric. */
+@keyframes glint {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  35% {
+    opacity: 0.9;
+    transform: translate3d(0, -10px, 0) scale(1);
+  }
+  70% {
+    opacity: 0.22;
+    transform: translate3d(0, -18px, 0) scale(1.06);
+  }
+}
+
+.silk .glint {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--glint);
+  box-shadow: 0 0 16px 5px rgba(150, 186, 240, 0.16);
+  filter: blur(0.4px);
+  opacity: 0;
+  animation: glint 11s ease-in-out infinite;
+}
+
+.silk .glint-accent {
+  background: var(--glint-accent);
+  box-shadow: 0 0 18px 6px rgba(224, 135, 137, 0.14);
+}
+
+.silk .glint-1 {
+  top: 16%;
+  left: 14%;
+  animation-duration: 9s;
+}
+
+.silk .glint-2 {
+  top: 26%;
+  left: 78%;
+  animation-duration: 13s;
+  animation-delay: 2.5s;
+}
+
+.silk .glint-3 {
+  top: 58%;
+  left: 8%;
+  animation-duration: 15s;
+  animation-delay: 5s;
+}
+
+.silk .glint-4 {
+  top: 44%;
+  left: 62%;
+  animation-duration: 11s;
+  animation-delay: 1.5s;
+}
+
+.silk .glint-5 {
+  top: 76%;
+  left: 84%;
+  animation-duration: 14s;
+  animation-delay: 3.5s;
+}
+
+.silk .glint-6 {
+  top: 66%;
+  left: 34%;
+  animation-duration: 10s;
+  animation-delay: 6.5s;
+}
+
+/* Flat, unblurred layers. */
+.silk .silk-beam,
+.silk .silk-rules,
+.silk .silk-grain,
+.silk .silk-vignette {
+  border-radius: 0;
+  filter: none;
+}
+
+/* Lighter treatment on phones: gentler blur, fewer fine details. */
 @media (max-width: 767px) {
   .silk {
-    opacity: 0.7;
+    opacity: 0.5;
   }
 
   .silk span {
     filter: blur(52px);
   }
 
-  .silk-weave {
+  .silk-weave,
+  .silk-rules,
+  .silk-grain,
+  .glint-3,
+  .glint-5 {
     display: none;
   }
 }
