@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { jetbrainsMono, manrope, playfair } from "@/lib/fonts";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
+import { LightParticles } from "@/components/light-particles";
 
 export const metadata: Metadata = {
   title: "Employee Portal",
@@ -46,12 +47,7 @@ export default function RootLayout({
           <span className="silk-rules" />
           <span className="silk-grain" />
           <span className="silk-vignette" />
-          <span className="glint glint-1" />
-          <span className="glint glint-2" />
-          <span className="glint glint-3" />
-          <span className="glint glint-4" />
-          <span className="glint glint-accent glint-5" />
-          <span className="glint glint-accent glint-6" />
+          <LightParticles />
         </div>
         <ServiceWorkerRegistrar />
         {children}

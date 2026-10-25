@@ -330,7 +330,7 @@ body::before {
 .silk-4,
 .silk-5,
 .silk-sheen,
-.silk .glint {
+.silk .particle {
   will-change: transform;
 }
 
@@ -460,78 +460,69 @@ body::before {
     radial-gradient(72% 62% at 50% 52%, rgba(11, 16, 32, 0.5), transparent 72%);
 }
 
-/* Light points drifting through the fabric. */
-@keyframes glint {
-  0%,
+/* Light particles drifting up through the fabric.
+   `--sway` and `--drift` are set per particle, so each one travels its own
+   way. Durations, delays and positions are staggered so they never pulse
+   in unison. */
+@keyframes particle-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.6);
+  }
+  22% {
+    opacity: 0.9;
+  }
+  68% {
+    opacity: 0.45;
+  }
   100% {
     opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.8);
-  }
-  35% {
-    opacity: 0.9;
-    transform: translate3d(0, -10px, 0) scale(1);
-  }
-  70% {
-    opacity: 0.22;
-    transform: translate3d(0, -18px, 0) scale(1.06);
+    transform: translate3d(var(--sway, 10px), var(--drift, -38px), 0) scale(1.05);
   }
 }
 
-.silk .glint {
-  width: 4px;
-  height: 4px;
+@keyframes particle-twinkle {
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.silk .particle {
   border-radius: 999px;
   background: var(--glint);
-  box-shadow: 0 0 16px 5px rgba(150, 186, 240, 0.16);
+  box-shadow: 0 0 14px 4px rgba(150, 186, 240, 0.14);
   filter: blur(0.4px);
-  opacity: 0;
-  animation: glint 11s ease-in-out infinite;
+  /* Base opacity is what shows under prefers-reduced-motion. */
+  opacity: 0.55;
+  animation: particle-rise 14s ease-in-out infinite;
 }
 
-.silk .glint-accent {
+.silk .particle-accent {
   background: var(--glint-accent);
-  box-shadow: 0 0 18px 6px rgba(224, 135, 137, 0.14);
+  box-shadow: 0 0 16px 5px rgba(224, 135, 137, 0.13);
 }
 
-.silk .glint-1 {
-  top: 16%;
-  left: 14%;
-  animation-duration: 9s;
+/* Larger, softer motes that give the field depth. */
+.silk .particle-orb {
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, var(--glint), transparent 70%);
+  filter: blur(7px);
+  opacity: 0.4;
+  animation: particle-twinkle 18s ease-in-out infinite;
 }
 
-.silk .glint-2 {
-  top: 26%;
-  left: 78%;
-  animation-duration: 13s;
-  animation-delay: 2.5s;
-}
-
-.silk .glint-3 {
-  top: 58%;
-  left: 8%;
-  animation-duration: 15s;
-  animation-delay: 5s;
-}
-
-.silk .glint-4 {
-  top: 44%;
-  left: 62%;
-  animation-duration: 11s;
-  animation-delay: 1.5s;
-}
-
-.silk .glint-5 {
-  top: 76%;
-  left: 84%;
-  animation-duration: 14s;
-  animation-delay: 3.5s;
-}
-
-.silk .glint-6 {
-  top: 66%;
-  left: 34%;
-  animation-duration: 10s;
-  animation-delay: 6.5s;
+.silk .particle-orb.particle-accent {
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--glint-accent),
+    transparent 70%
+  );
 }
 
 /* Flat, unblurred layers. */
@@ -556,9 +547,12 @@ body::before {
   .silk-weave,
   .silk-rules,
   .silk-grain,
-  .glint-3,
-  .glint-5 {
+  .silk .particle-orb {
     display: none;
+  }
+
+  .silk .particle {
+    opacity: 0.4;
   }
 }
 
