@@ -20,7 +20,7 @@ jobs:
     name: Gitleaks (leaked secrets)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Run Gitleaks
@@ -38,7 +38,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run Semgrep
         run: |
           semgrep scan \
@@ -54,7 +54,7 @@ jobs:
     name: Trivy (dependencies and misconfig)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run Trivy
         run: |
           docker run --rm -v "$PWD:/src" aquasec/trivy:latest fs \
@@ -68,7 +68,7 @@ jobs:
     name: npm / pnpm audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -87,7 +87,7 @@ jobs:
     name: Supabase scanners (rlsgate + vibe-shipcheck)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -103,7 +103,7 @@ jobs:
     name: Custom Supabase and frontend checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run checks
         shell: bash
         run: |
