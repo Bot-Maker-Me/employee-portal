@@ -11,6 +11,12 @@ import {
 import { resolvePharmaUserId } from "@/lib/pharma/identity";
 import type { PharmaMessage } from "@/lib/pharma/chat";
 import type { TopicCategory, TopicPriority } from "@/lib/topics";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import {
+  createPharmacyThreadSchema,
+  pharmacyMembersSchema,
+  sendPharmacyMessageSchema,
+} from "@/lib/validation";
 
 /** Compact, non-PHI description of a Postgres/PostgREST error. */
 function describeError(error: {
@@ -52,10 +58,23 @@ async function requireActiveEmployee(): Promise<{
 export async function listPharmacyMembersAction(
   pharmacyId: string,
 ): Promise<PharmacyMember[]> {
+  const parsed = pharmacyMembersSchema.safeParse({ pharmacyId });
+  if (!parsed.success) return [];
+
   const session = await requireActiveEmployee();
   if (!session || !isPharmaConfigured()) return [];
+
+  // Caps directory enumeration (also a per-IP guard for shared egress).
+  const limit = await enforceRateLimit({
+    bucket: "pharmacy_members",
+    userLimit: 60,
+    ipLimit: 120,
+    windowSeconds: 60,
+  });
+  if (!limit.ok) return [];
+
   try {
-    return await listPharmacyMembers(pharmacyId);
+    return await listPharmacyMembers(parsed.data.pharmacyId);
   } catch {
     return [];
   }
@@ -69,10 +88,24 @@ export async function createPharmacyThread(input: {
   category: TopicCategory;
   priority: TopicPriority;
   body: string;
-}): Promise<{ id: string } | { error: string; detail?: string }> {
+}): Promise<
+  { id: string } | { error: string; detail?: string; retryAfter?: number }
+> {
+  const parsed = createPharmacyThreadSchema.safeParse(input);
+  if (!parsed.success) return { error: "INVALID" };
+  const data = parsed.data;
+
   const session = await requireActiveEmployee();
   if (!session) return { error: "UNAUTHENTICATED" };
   if (!isPharmaConfigured()) return { error: "NOT_CONFIGURED" };
+
+  // Heavy, cross-project write: cap per user.
+  const limit = await enforceRateLimit({
+    bucket: "pharmacy_create",
+    userLimit: 10,
+    windowSeconds: 3600,
+  });
+  if (!limit.ok) return { error: "RATE_LIMITED", retryAfter: limit.retryAfter };
 
   try {
     const pharma = createPharmaClient();
@@ -82,15 +115,19 @@ export async function createPharmacyThread(input: {
     const { data: thread, error: threadError } = await pharma
       .from("topic_threads")
       .insert({
+        // NOTE (audit): this column holds the employee's user id, not an
+        // organization id. It is not used for authorization (the app scopes on
+        // organization_name) so it is left as-is to avoid breaking the Pharma
+        // schema; see SECURITY_AUDIT.md, finding A6.
         organization_id: session.userId,
         organization_name: session.organization,
-        pharmacy_id: input.pharmacyId,
+        pharmacy_id: data.pharmacyId,
         created_by: pharmaUserId,
-        topic: input.title,
-        category: input.category,
-        priority: input.priority,
+        topic: data.title,
+        category: data.category,
+        priority: data.priority,
         status: "open",
-        assigned_user_id: input.memberId,
+        assigned_user_id: data.memberId,
       })
       .select("id")
       .single();
@@ -104,7 +141,7 @@ export async function createPharmacyThread(input: {
       thread_id: thread.id,
       sender_id: pharmaUserId,
       sender_side: "employee",
-      body: input.body,
+      body: data.body,
     });
     if (messageError) {
       console.error("[pharma] topic_messages insert failed:", messageError.message);
@@ -124,13 +161,27 @@ export async function createPharmacyThread(input: {
 export async function sendPharmacyMessage(
   threadId: string,
   body: string,
-): Promise<{ error?: string; detail?: string; message?: PharmaMessage }> {
-  const text = body.trim();
-  if (!text) return { error: "EMPTY" };
+): Promise<{
+  error?: string;
+  detail?: string;
+  retryAfter?: number;
+  message?: PharmaMessage;
+}> {
+  const parsed = sendPharmacyMessageSchema.safeParse({ threadId, body });
+  if (!parsed.success) return { error: "INVALID" };
+  const text = parsed.data.body;
 
   const session = await requireActiveEmployee();
   if (!session) return { error: "UNAUTHENTICATED" };
   if (!isPharmaConfigured()) return { error: "NOT_CONFIGURED" };
+
+  // 20 messages / minute per user (matches the portal's stated policy).
+  const limit = await enforceRateLimit({
+    bucket: "pharmacy_send",
+    userLimit: 20,
+    windowSeconds: 60,
+  });
+  if (!limit.ok) return { error: "RATE_LIMITED", retryAfter: limit.retryAfter };
 
   try {
     const pharma = createPharmaClient();

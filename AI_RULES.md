@@ -31,6 +31,8 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - **Cross-project identity**: never write Employee Portal user ids into Pharma columns that reference that project's `auth.users` (`topic_threads.created_by`, `topic_messages.sender_id`) — the id does not exist there and the insert fails with FK error `23503`. Resolve via `identity.ts` (email match) or pass `NULL` with `sender_side = 'employee'`. Pharma Chat does not use `topic_*` RLS or a shared project — the service-role bridge is the only access path.
 - **Live chat**: the message list is client state — new messages render optimistically on send and are reconciled with the stored row the action returns; incoming messages arrive by polling `GET /api/pharmacy/threads/[id]/messages?since=<iso>` every 4s while the tab is visible. That route re-checks auth/org itself. Keep server actions off the hot path: no full-page `revalidatePath` when sending.
 - SQL for the shared Supabase project lives in `sql/` and is delivered for the user to run — never run silently.
+- **Hardening migrations** live in `supabase/migrations/NNNN_name.sql`: additive, idempotent, versioned, never editing an older file and never dropping data/columns. Diagnostics in `supabase/audit/`, security tests in `supabase/tests/`. Secrets use `.env.local` (git-ignored) with `.env.example` as the committed template.
+- **Server-side rate limiting** lives in `src/lib/rate-limit.ts` (+ `rate_limits` table / `check_rate_limit*` RPCs). Enforce it in every route handler and server action; request inputs are parsed with zod schemas from `src/lib/validation.ts`.
 
 ## Roles & Approval
 - `profiles.role`: `employee` | `admin` | `super_admin`. `profiles.status`: `pending` | `active`.

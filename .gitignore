@@ -4,5 +4,9 @@ node_modules/
 out/
 build/
 *.tsbuildinfo
-.env*.local
 .DS_Store
+
+# Secrets — never commit real values. .env.example is the only env file in git.
+.env
+.env.*
+!.env.example

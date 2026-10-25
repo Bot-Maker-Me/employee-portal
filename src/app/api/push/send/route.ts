@@ -4,6 +4,8 @@ import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
 import { listPharmacyReplies, listThreads } from "@/lib/pharma/chat";
+import { clientIpFromHeaders, enforceRateLimit } from "@/lib/rate-limit";
+import { pushSendSchema } from "@/lib/validation";
 import {
   isPushSendConfigured,
   sendPush,
@@ -11,6 +13,9 @@ import {
 } from "@/lib/push-server";
 
 export const dynamic = "force-dynamic";
+
+/** Reject oversized bodies before parsing. The real payload is a few hundred bytes. */
+const MAX_BODY_BYTES = 8 * 1024;
 
 /**
  * Web-push dispatcher. Only ever notifies the caller's OWN devices, which is why
@@ -31,10 +36,49 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
+  const declaredLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+  }
+
   const profile = await getProfile(user.id);
   if (!profile?.organization) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
+
+  // Server-side throttle: the watcher polls once a minute, so 30/min per user is
+  // generous; the IP guard catches shared egress / scripted abuse.
+  const limit = await enforceRateLimit({
+    bucket: "push_send",
+    userLimit: 30,
+    ipLimit: 60,
+    windowSeconds: 60,
+    ip: clientIpFromHeaders(request.headers),
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
+
+  const raw = await request.text();
+  if (raw.length > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+  }
+
+  let parsedBody: unknown = {};
+  try {
+    parsedBody = raw ? JSON.parse(raw) : {};
+  } catch {
+    // No/invalid body: fall through to the default mode below.
+    parsedBody = {};
+  }
+  const parsed = pushSendSchema.safeParse(parsedBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "INVALID" }, { status: 400 });
+  }
+  const body = parsed.data;
 
   const { data: rows } = await supabase
     .from("push_subscriptions")
@@ -44,13 +88,6 @@ export async function POST(request: Request) {
 
   if (!isPushSendConfigured()) {
     return NextResponse.json({ error: "NOT_CONFIGURED" }, { status: 503 });
-  }
-
-  let body: { mode?: string; since?: string | null; hidden?: boolean } = {};
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    // No/!invalid body: fall through to the default mode below.
   }
 
   if (body.mode === "test") {

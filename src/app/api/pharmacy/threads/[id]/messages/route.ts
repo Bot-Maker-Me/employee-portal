@@ -4,6 +4,8 @@ import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
 import { getThreadOrganization, listThreadMessages } from "@/lib/pharma/chat";
+import { clientIpFromHeaders, enforceRateLimit } from "@/lib/rate-limit";
+import { messagePollSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,31 @@ export async function GET(
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
+  // The client polls every 4s while visible (~15/min). 60/min per user and
+  // 120/min per IP leave headroom while stopping scripted hammering.
+  const limit = await enforceRateLimit({
+    bucket: "pharmacy_poll",
+    userLimit: 60,
+    ipLimit: 120,
+    windowSeconds: 60,
+    ip: clientIpFromHeaders(request.headers),
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
+
+  const sinceRaw = new URL(request.url).searchParams.get("since");
+  const parsed = messagePollSchema.safeParse({
+    id: params.id,
+    since: sinceRaw && sinceRaw.length > 0 ? sinceRaw : null,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: "INVALID" }, { status: 400 });
+  }
+
   const flags = await getFeatureFlags(profile.organization);
   if (!flags.employee_pharmacy_topics) {
     return NextResponse.json({ error: "DISABLED" }, { status: 403 });
@@ -42,13 +69,12 @@ export async function GET(
     return NextResponse.json({ error: "NOT_CONFIGURED" }, { status: 503 });
   }
 
-  const organization = await getThreadOrganization(params.id);
+  const organization = await getThreadOrganization(parsed.data.id);
   if (organization !== profile.organization) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  const since = new URL(request.url).searchParams.get("since");
-  const messages = await listThreadMessages(params.id, since);
+  const messages = await listThreadMessages(parsed.data.id, parsed.data.since);
 
   return NextResponse.json(
     { messages },

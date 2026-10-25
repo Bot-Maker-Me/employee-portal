@@ -153,9 +153,13 @@ export function ThreadView({
       setError(
         result.error === "CLOSED"
           ? "This chat is closed."
-          : result.detail
-            ? `Message failed to send: ${result.detail}`
-            : "Message failed to send. Please try again.",
+          : result.error === "RATE_LIMITED"
+            ? `Slow down — you can send up to 20 messages per minute${
+                result.retryAfter ? ` (try again in ${result.retryAfter}s)` : ""
+              }.`
+            : result.detail
+              ? `Message failed to send: ${result.detail}`
+              : "Message failed to send. Please try again.",
       );
       return;
     }
