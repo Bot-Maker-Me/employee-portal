@@ -1,15 +1,19 @@
 "use client";
 
-import { AnimatePresence, motion, useSpring } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useSpring,
+  type HTMLMotionProps,
+} from "framer-motion";
 import {
   useRef,
   useState,
-  type ButtonHTMLAttributes,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFinePointer } from "./use-media";
 
@@ -19,7 +23,7 @@ type MagneticButtonProps = {
   children: ReactNode;
   loading?: boolean;
   success?: boolean;
-} & ButtonHTMLAttributes<HTMLButtonElement>;
+} & HTMLMotionProps<"button">;
 
 /**
  * Coral submit button: magnetic drift toward the cursor, lift + glow + sweep on

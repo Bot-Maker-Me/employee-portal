@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  type TargetAndTransition,
+} from "framer-motion";
 import { useFinePointer, usePrefersReducedMotion } from "./use-media";
 
 /** Deterministic PRNG so server and client render identical dust fields. */
@@ -48,7 +53,19 @@ const GRID_MASK =
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-const ORBS = [
+type Orb = {
+  color: string;
+  size: number;
+  top?: string;
+  left?: string;
+  right?: string;
+  bottom?: string;
+  opacity: number;
+  duration: number;
+  drift: TargetAndTransition;
+};
+
+const ORBS: Orb[] = [
   {
     color: "var(--accent)",
     size: 520,
@@ -76,7 +93,7 @@ const ORBS = [
     duration: 24,
     drift: { x: [0, 70, 0], y: [0, -60, 0], scale: [1, 1.1, 1] },
   },
-] as const;
+];
 
 export function Background() {
   const reduced = usePrefersReducedMotion();
