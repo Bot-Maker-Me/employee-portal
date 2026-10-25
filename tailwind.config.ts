@@ -13,6 +13,8 @@ const config: Config = {
         glass: "var(--glass)",
         "glass-border": "var(--glass-border)",
         field: "var(--field)",
+        "auth-1": "var(--auth-1)",
+        "auth-2": "var(--auth-2)",
         paper: {
           DEFAULT: "var(--paper)",
           ink: "var(--paper-ink)",
@@ -28,6 +30,7 @@ const config: Config = {
           soft: "var(--accent-soft)",
           tint: "var(--accent-tint)",
           ring: "var(--accent-ring)",
+          warm: "var(--accent-warm)",
         },
         ok: "var(--ok)",
         warn: "var(--warn)",
