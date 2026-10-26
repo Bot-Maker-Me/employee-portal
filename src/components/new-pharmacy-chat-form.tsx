@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,49 +104,91 @@ export function NewPharmacyChatForm({
         </p>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="pharmacy">Pharmacy</Label>
-          <select
-            id="pharmacy"
-            value={pharmacyId}
-            onChange={(event) => setPharmacyId(event.target.value)}
-            className="w-full rounded-btn border border-line bg-sunken px-3.5 py-2.5 text-[15px] text-ink focus:border-accent focus:outline-none"
-          >
-            <option value="">Select a pharmacy…</option>
-            {pharmacies.map((pharmacy) => (
-              <option key={pharmacy.id} value={pharmacy.id}>
-                {pharmacy.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="pharmacy">Pharmacy</Label>
+        <select
+          id="pharmacy"
+          value={pharmacyId}
+          onChange={(event) => setPharmacyId(event.target.value)}
+          className="w-full rounded-btn border border-line bg-sunken px-3.5 py-2.5 text-[15px] text-ink focus:border-accent focus:outline-none"
+        >
+          <option value="">Select a pharmacy…</option>
+          {pharmacies.map((pharmacy) => (
+            <option key={pharmacy.id} value={pharmacy.id}>
+              {pharmacy.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="member">Member</Label>
-          <select
-            id="member"
-            value={memberId}
-            disabled={!pharmacyId || loadingMembers}
-            onChange={(event) => setMemberId(event.target.value)}
-            className="w-full rounded-btn border border-line bg-sunken px-3.5 py-2.5 text-[15px] text-ink focus:border-accent focus:outline-none disabled:opacity-50"
-          >
-            {loadingMembers ? (
-              <option value="">Loading…</option>
-            ) : members.length === 0 ? (
-              <option value="">No members found</option>
-            ) : (
-              <>
-                <option value="">Anyone at the pharmacy</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <Label>Member</Label>
+          <span className="label-mono text-muted">
+            {loadingMembers
+              ? "Loading…"
+              : members.length > 0
+                ? `${members.length} available`
+                : ""}
+          </span>
+        </div>
+        <div
+          role="radiogroup"
+          aria-label="Member"
+          className={cn(
+            "scroll-slim max-h-60 space-y-1 overflow-y-auto rounded-btn border border-line bg-sunken p-1.5",
+            (!pharmacyId || loadingMembers) && "opacity-50",
+          )}
+        >
+          {loadingMembers ? (
+            <p className="flex items-center gap-2 px-2.5 py-2 text-[14px] text-muted">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              Loading members…
+            </p>
+          ) : members.length === 0 ? (
+            <p className="px-2.5 py-2 text-[14px] text-muted">No members found</p>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setMemberId("")}
+                aria-pressed={memberId === ""}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-btn border px-3 py-2.5 text-left text-[15px] transition-colors",
+                  memberId === ""
+                    ? "border-accent bg-accent-tint text-ink"
+                    : "border-transparent text-muted hover:text-ink",
+                )}
+              >
+                <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">Anyone at the pharmacy</span>
+              </button>
+              {members.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => setMemberId(member.id)}
+                  aria-pressed={memberId === member.id}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-btn border px-3 py-2.5 text-left text-[15px] transition-colors",
+                    memberId === member.id
+                      ? "border-accent bg-accent-tint text-ink"
+                      : "border-transparent text-muted hover:text-ink",
+                  )}
+                >
+                  <User className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
                     {member.full_name ?? "Member"}
-                    {member.role ? ` · ${member.role}` : ""}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
+                  </span>
+                  {member.role && (
+                    <span className="label-mono ml-auto shrink-0 text-muted">
+                      {member.role}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
