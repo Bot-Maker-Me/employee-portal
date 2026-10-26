@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { getDirectory, listChannelSummaries } from "@/lib/channels";
@@ -9,13 +9,10 @@ import { ChannelList } from "@/components/channel-list";
 import { NewChatDialog } from "@/components/new-chat-dialog";
 
 export default async function TeamChatPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   if (!profile?.organization) redirect("/home");
 
   const flags = await getFeatureFlags(profile.organization);
@@ -24,7 +21,7 @@ export default async function TeamChatPage() {
   }
 
   const [summaries, directory] = await Promise.all([
-    listChannelSummaries(user.id),
+    listChannelSummaries(userId),
     getDirectory(),
   ]);
 
@@ -42,7 +39,7 @@ export default async function TeamChatPage() {
               : "All caught up"}
           </p>
         </div>
-        <NewChatDialog directory={directory} currentUserId={user.id} />
+        <NewChatDialog directory={directory} currentUserId={userId} />
       </div>
 
       <div className="flex max-w-2xl items-center gap-2 rounded-ledger border border-line bg-raised px-4 py-3">

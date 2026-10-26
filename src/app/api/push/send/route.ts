@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
@@ -29,10 +30,8 @@ const MAX_BODY_BYTES = 8 * 1024;
  */
 export async function POST(request: Request) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const userId = await getSessionUserId();
+  if (!userId) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
@@ -41,20 +40,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
   }
 
-  const profile = await getProfile(user.id);
+  // Throttle and profile lookup are independent — run them together.
+  // Server-side throttle: the watcher polls once a minute, so 30/min per user is
+  // generous; the IP guard catches shared egress / scripted abuse.
+  const [profile, limit] = await Promise.all([
+    getProfile(userId),
+    enforceRateLimit({
+      bucket: "push_send",
+      userLimit: 30,
+      ipLimit: 60,
+      windowSeconds: 60,
+      ip: clientIpFromHeaders(request.headers),
+    }),
+  ]);
   if (!profile?.organization) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
-
-  // Server-side throttle: the watcher polls once a minute, so 30/min per user is
-  // generous; the IP guard catches shared egress / scripted abuse.
-  const limit = await enforceRateLimit({
-    bucket: "push_send",
-    userLimit: 30,
-    ipLimit: 60,
-    windowSeconds: 60,
-    ip: clientIpFromHeaders(request.headers),
-  });
   if (!limit.ok) {
     return NextResponse.json(
       { error: "RATE_LIMITED" },
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
   const { data: rows } = await supabase
     .from("push_subscriptions")
     .select("endpoint, p256dh, auth")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
   const devices = (rows ?? []) as PushTarget[];
 
   if (!isPushSendConfigured()) {

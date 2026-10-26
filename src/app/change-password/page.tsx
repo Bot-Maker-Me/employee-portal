@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { isUserActive } from "@/lib/app-status";
 import { Wordmark } from "@/components/wordmark";
@@ -13,16 +13,15 @@ import { AccountDeactivated } from "@/components/account-deactivated";
  * a temporary password cannot be used to reach the portal.
  */
 export default async function ChangePasswordPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const active = await isUserActive(user.id).catch(() => false);
+  const [active, profile] = await Promise.all([
+    isUserActive(userId).catch(() => false),
+    getProfile(userId),
+  ]);
   if (!active) return <AccountDeactivated />;
 
-  const profile = await getProfile(user.id);
   const forced = Boolean(profile?.must_change_password);
 
   return (

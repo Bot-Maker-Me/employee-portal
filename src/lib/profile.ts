@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Profile = {
@@ -17,24 +18,30 @@ export type Profile = {
  * Loads the current user's profile. Fails closed: any error (missing table,
  * RLS denial, network) returns null so callers render the "not linked" state
  * instead of leaking data.
+ *
+ * Wrapped in React's `cache` so the layout and the page it wraps share ONE
+ * query per request instead of running the same lookup twice. Outside a render
+ * (route handlers) it simply runs normally.
  */
-export async function getProfile(userId: string): Promise<Profile | null> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(
-        "id, full_name, username, email, role, organization, status, pharmacy_id, home_id, must_change_password",
-      )
-      .eq("id", userId)
-      .maybeSingle();
+export const getProfile = cache(
+  async (userId: string): Promise<Profile | null> => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, username, email, role, organization, status, pharmacy_id, home_id, must_change_password",
+        )
+        .eq("id", userId)
+        .maybeSingle();
 
-    if (error) return null;
-    return (data as Profile | null) ?? null;
-  } catch {
-    return null;
-  }
-}
+      if (error) return null;
+      return (data as Profile | null) ?? null;
+    } catch {
+      return null;
+    }
+  },
+);
 
 /** Approved accounts are the only ones allowed into the portal. */
 export function isApproved(profile: Profile | null): boolean {

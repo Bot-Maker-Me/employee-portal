@@ -55,6 +55,12 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - Respect feature flags from `features` + `tenant_features` (`employee_team_chat`, `employee_pharmacy_topics`); hide nav items and block routes when OFF (`FeatureDisabled`).
 - RLS is mandatory on every table; policies scope rows to the user's own organization.
 
+## Performance (keep navigation fast)
+- **One Auth round trip per request.** Middleware validates the session (`getUser()`), then hands the id to the app in the `x-ep-user-id` request header (`USER_ID_HEADER`) and does **no** database work. Server components/route handlers read it with `getSessionUserId()` (`src/lib/auth/session.ts`) instead of calling `auth.getUser()` again — those duplicate calls were the main reason pages felt slow. Middleware always overwrites the header (and deletes it for anonymous requests), so a browser cannot forge it.
+- **Forced password change costs no query:** middleware reads the httpOnly `ep_pw_change` cookie (`src/lib/auth/forced-change.ts`; written at sign-in, cleared on change). `(portal)/layout.tsx` and `/change-password` still read `profiles.must_change_password`, which remains the authority — never let the cookie alone gate a page.
+- **One query per request per resource:** helpers a layout and its page both need are wrapped in React `cache()` (`getProfile`, `getFeatureFlags`, `isUserActive`, the unread-count RPCs in `src/lib/activity.ts`). Use `Promise.all` for independent lookups; never chain awaits that don't depend on each other.
+- Latency is dominated by round trips to Supabase, so the Vercel function region and the Supabase project region must match, and any new page should stay within ~3 sequential lookups.
+
 ## Conventions
 - Keep components small and focused. No partial/placeholder implementations.
 - Only edit files related to the current request. Do not change existing tables or other apps' code without saying so first.

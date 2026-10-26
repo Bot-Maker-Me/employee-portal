@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MessagesSquare, Users } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags, type FeatureFlags } from "@/lib/features";
 import { getRecentActivity } from "@/lib/activity";
@@ -17,19 +17,16 @@ const NO_FLAGS: FeatureFlags = {
 };
 
 export default async function HomePage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   const organization = profile?.organization ?? "Your organization";
   const flags = profile?.organization
     ? await getFeatureFlags(profile.organization)
     : NO_FLAGS;
 
-  const activity = await getRecentActivity(flags, user.id);
+  const activity = await getRecentActivity(flags, userId);
 
   const firstName = (profile?.full_name ?? "").trim().split(/\s+/)[0] || "there";
   const showPharmacy = flags.employee_pharmacy_topics;

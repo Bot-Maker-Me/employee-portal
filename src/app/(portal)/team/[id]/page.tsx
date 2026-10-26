@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { getChannel, getDirectory } from "@/lib/channels";
@@ -11,13 +11,10 @@ export default async function ChannelPage({
 }: {
   params: { id: string };
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   if (!profile?.organization) redirect("/home");
 
   const flags = await getFeatureFlags(profile.organization);
@@ -25,10 +22,12 @@ export default async function ChannelPage({
     return <FeatureDisabled label="Team Chat" />;
   }
 
-  const result = await getChannel(params.id, user.id);
+  // Channel and directory are independent — fetch together.
+  const [result, directory] = await Promise.all([
+    getChannel(params.id, userId),
+    getDirectory(),
+  ]);
   if (!result) notFound();
-
-  const directory = await getDirectory();
 
   return (
     <ChannelView
@@ -36,7 +35,7 @@ export default async function ChannelPage({
       label={result.label}
       members={result.members}
       messages={result.messages}
-      currentUserId={user.id}
+      currentUserId={userId}
       directory={directory}
     />
   );

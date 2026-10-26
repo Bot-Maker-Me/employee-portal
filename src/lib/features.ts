@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type FeatureFlags = {
@@ -19,37 +20,41 @@ const DEFAULT_FLAGS: FeatureFlags = {
  *   3. false (fail closed)
  *
  * If the flag tables don't exist yet, every feature is OFF.
+ *
+ * Cached per request (React `cache`): the layout, the page and any route handler
+ * in the same request share one lookup instead of repeating it. Outside a render
+ * it simply runs normally.
  */
-export async function getFeatureFlags(
-  organization: string,
-): Promise<FeatureFlags> {
-  try {
-    const supabase = createClient();
+export const getFeatureFlags = cache(
+  async (organization: string): Promise<FeatureFlags> => {
+    try {
+      const supabase = createClient();
 
-    const [{ data: defs }, { data: overrides }] = await Promise.all([
-      supabase.from("features").select("key, default_enabled"),
-      supabase
-        .from("tenant_features")
-        .select("feature_key, enabled")
-        .eq("organization", organization),
-    ]);
+      const [{ data: defs }, { data: overrides }] = await Promise.all([
+        supabase.from("features").select("key, default_enabled"),
+        supabase
+          .from("tenant_features")
+          .select("feature_key, enabled")
+          .eq("organization", organization),
+      ]);
 
-    const resolved: FeatureFlags = { ...DEFAULT_FLAGS };
+      const resolved: FeatureFlags = { ...DEFAULT_FLAGS };
 
-    for (const row of defs ?? []) {
-      if (row.key in resolved) {
-        resolved[row.key as keyof FeatureFlags] = Boolean(row.default_enabled);
+      for (const row of defs ?? []) {
+        if (row.key in resolved) {
+          resolved[row.key as keyof FeatureFlags] = Boolean(row.default_enabled);
+        }
       }
-    }
 
-    for (const row of overrides ?? []) {
-      if (row.feature_key in resolved) {
-        resolved[row.feature_key as keyof FeatureFlags] = Boolean(row.enabled);
+      for (const row of overrides ?? []) {
+        if (row.feature_key in resolved) {
+          resolved[row.feature_key as keyof FeatureFlags] = Boolean(row.enabled);
+        }
       }
-    }
 
-    return resolved;
-  } catch {
-    return { ...DEFAULT_FLAGS };
-  }
-}
+      return resolved;
+    } catch {
+      return { ...DEFAULT_FLAGS };
+    }
+  },
+);

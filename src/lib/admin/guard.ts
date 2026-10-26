@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile, isAdmin, isSuperAdmin, type Profile } from "@/lib/profile";
 
 /**
@@ -16,17 +16,16 @@ export type AdminContext = {
 
 export async function getAdminContext(): Promise<AdminContext | null> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    // Middleware already validated the session for this request, so no extra
+    // Supabase Auth round trip is needed here.
+    const userId = await getSessionUserId();
+    if (!userId) return null;
 
-    const profile = await getProfile(user.id);
+    const profile = await getProfile(userId);
     if (!isAdmin(profile) || !profile) return null;
 
     return {
-      userId: user.id,
+      userId,
       profile,
       isSuperAdmin: isSuperAdmin(profile),
     };

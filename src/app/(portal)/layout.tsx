@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getProfile, isAdmin, isApproved, isSuperAdmin } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { getActivitySummary } from "@/lib/activity";
+import { getSessionUserId } from "@/lib/auth/session";
 import { PortalSidebar, PortalTabBar } from "@/components/portal-nav";
 import { LiveTicker } from "@/components/live-ticker";
 import { UserFooter } from "@/components/user-footer";
@@ -25,23 +25,30 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Middleware validated the session for this request and passed the id along.
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  if (!user) redirect("/login");
+  // Profile and per-app status are independent — fetch them together instead of
+  // one after the other.
+  const [profile, active] = await Promise.all([
+    getProfile(userId),
+    isUserActive(userId).catch(() => false),
+  ]);
 
   // Fail closed: never render portal data without a usable profile.
-  const profile = await getProfile(user.id);
   if (!profile) return <UnlinkedAccount />;
   if (!isApproved(profile)) return <PendingApproval />;
   if (!profile.organization && !isSuperAdmin(profile)) return <UnlinkedAccount />;
 
   // Deactivated for this app? (A missing row means active.) Unknown status is
   // treated as inactive — no portal data is rendered in either case.
-  const active = await isUserActive(user.id).catch(() => false);
   if (!active) return <AccountDeactivated />;
+
+  // A temporary password must be replaced before anything else is reachable.
+  // Middleware already redirects using the session cookie; this is the
+  // database-authoritative backstop for a missing or stale cookie.
+  if (profile.must_change_password) redirect("/change-password");
 
   const admin = isAdmin(profile);
   const flags = profile.organization
@@ -87,7 +94,7 @@ export default async function PortalLayout({
       </div>
 
       <IdleTimeout />
-      <PushWatcher userId={user.id} />
+      <PushWatcher userId={userId} />
     </div>
   );
 }

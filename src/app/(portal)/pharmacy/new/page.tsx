@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
@@ -12,13 +12,15 @@ import { SectionMarker } from "@/components/section-marker";
 import { NewPharmacyChatForm } from "@/components/new-pharmacy-chat-form";
 
 export default async function NewPharmacyChatPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  // The directory lives in the other project, so fetch it alongside the profile
+  // rather than after it.
+  const [profile, pharmacies] = await Promise.all([
+    getProfile(userId),
+    listPharmacies(),
+  ]);
   if (!profile?.organization) redirect("/home");
 
   const flags = await getFeatureFlags(profile.organization);
@@ -27,8 +29,6 @@ export default async function NewPharmacyChatPage() {
   }
 
   if (!isPharmaConfigured()) return <PharmaUnconfigured />;
-
-  const pharmacies = await listPharmacies();
 
   return (
     <div className="animate-rise space-y-6 p-5 md:p-8">

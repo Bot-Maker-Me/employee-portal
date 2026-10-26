@@ -14,6 +14,11 @@ import {
   usernameForAttempt,
 } from "@/lib/auth/username";
 import { isLoginBlocked, recordLoginAttempt } from "@/lib/auth/login-attempts";
+import {
+  clearForcedChangePending,
+  markForcedChangePending,
+} from "@/lib/auth/forced-change";
+import { getSessionUserId } from "@/lib/auth/session";
 import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/lib/auth/password";
 import { getProfileIdentity, setMustChangePassword } from "@/lib/auth/store";
 
@@ -139,6 +144,11 @@ export async function usernameSignIn(input: {
 
   await record(true);
 
+  // Keep the session cookie in step with the database flag, so middleware can
+  // gate every route without a query of its own.
+  if (mustChangePassword) markForcedChangePending();
+  else clearForcedChangePending();
+
   return {
     ok: true,
     next: mustChangePassword ? CHANGE_PASSWORD_PATH : safeNext(input?.redirectTo),
@@ -157,11 +167,9 @@ export async function changePassword(input: {
   confirmPassword: string;
 }): Promise<ChangePasswordResult> {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getSessionUserId();
 
-  if (!user) {
+  if (!userId) {
     return { ok: false, message: "Your session has ended. Please sign in again." };
   }
 
@@ -186,9 +194,9 @@ export async function changePassword(input: {
     return { ok: false, message: SERVICE_UNAVAILABLE_ERROR };
   }
 
-  const identity = await getProfileIdentity(user.id);
+  const identity = await getProfileIdentity(userId);
   const admin = createAdminClient();
-  const { data: found } = await admin.auth.admin.getUserById(user.id);
+  const { data: found } = await admin.auth.admin.getUserById(userId);
   // The AUTH email, not profiles.email: an admin-created account has a hidden
   // placeholder address that never appears in the app.
   const authEmail = found?.user?.email ?? null;
@@ -219,7 +227,7 @@ export async function changePassword(input: {
     return { ok: false, message: "Your current password isn’t right." };
   }
 
-  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+  const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
     password: next,
   });
 
@@ -252,11 +260,12 @@ export async function changePassword(input: {
     console.warn("[auth] could not revoke other sessions");
   }
 
-  await setMustChangePassword(user.id, false);
+  await setMustChangePassword(userId, false);
+  clearForcedChangePending();
   await logAuthEvent({
     action: "password_changed",
-    actorId: user.id,
-    targetUserId: user.id,
+    actorId: userId,
+    targetUserId: userId,
   });
 
   return { ok: true };

@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
@@ -14,13 +14,10 @@ export default async function PharmacyThreadPage({
 }: {
   params: { id: string };
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   if (!profile?.organization) redirect("/home");
 
   const flags = await getFeatureFlags(profile.organization);
@@ -30,13 +27,16 @@ export default async function PharmacyThreadPage({
 
   if (!isPharmaConfigured()) return <PharmaUnconfigured />;
 
-  const result = await getThread(params.id);
+  // The thread and the pharmacy directory are independent — fetch together.
+  const [result, pharmacies] = await Promise.all([
+    getThread(params.id),
+    listPharmacies(),
+  ]);
   // RLS-equivalent guard: only the caller's organization may open this thread.
   if (!result || result.thread.organization_name !== profile.organization) {
     notFound();
   }
 
-  const pharmacies = await listPharmacies();
   const pharmacyName =
     pharmacies.find((pharmacy) => pharmacy.id === result.thread.pharmacy_id)
       ?.name ?? "Pharmacy";

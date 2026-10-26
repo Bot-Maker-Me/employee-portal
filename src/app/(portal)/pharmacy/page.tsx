@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
@@ -16,13 +16,10 @@ import { formatStamp } from "@/lib/format";
 import type { TopicCategory, TopicPriority } from "@/lib/topics";
 
 export default async function PharmacyChatPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   if (!profile?.organization) redirect("/home");
 
   const flags = await getFeatureFlags(profile.organization);

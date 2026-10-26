@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile, isAdmin, isSuperAdmin } from "@/lib/profile";
 import { getAdminOrganizations, getAdminUsers } from "@/lib/admin";
 import { listPendingResetRequests } from "@/lib/admin/identity";
@@ -8,20 +8,17 @@ import { AdminConsole } from "@/components/admin/admin-console";
 import { AdminNav } from "@/components/admin/admin-nav";
 
 export default async function AdminPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   if (!isAdmin(profile) || !profile) redirect("/home");
 
   const [users, organizations, resetRequests] = await Promise.all([
     getAdminUsers(),
     getAdminOrganizations(),
     listPendingResetRequests({
-      userId: user.id,
+      userId,
       profile,
       isSuperAdmin: isSuperAdmin(profile),
     }),
@@ -43,7 +40,7 @@ export default async function AdminPage() {
       <AdminConsole
         users={users}
         organizations={organizations}
-        currentUserId={user.id}
+        currentUserId={userId}
         isSuperAdmin={isSuperAdmin(profile)}
         defaultOrg={profile.organization ?? organizations[0]?.name ?? ""}
       />

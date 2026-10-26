@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile, isAdmin as isAdminUser } from "@/lib/profile";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SectionMarker } from "@/components/section-marker";
@@ -17,13 +17,10 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 export default async function AccountPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
 
-  const profile = await getProfile(user.id);
+  const profile = await getProfile(userId);
   const isAdmin = isAdminUser(profile);
 
   return (
@@ -60,7 +57,7 @@ export default async function AccountPage() {
       </section>
 
       <NotificationSettings
-        userId={user.id}
+        userId={userId}
         isAdmin={isAdmin}
         pushSendReady={isPushSendConfigured()}
       />

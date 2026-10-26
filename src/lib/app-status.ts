@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -25,7 +26,7 @@ export type AuthAuditAction =
  * Fail-closed reader: a missing row is ACTIVE, but a query error throws so the
  * caller can decide (login treats an error as "not active").
  */
-export async function isUserActive(userId: string): Promise<boolean> {
+export const isUserActive = cache(async (userId: string): Promise<boolean> => {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("app_user_status")
@@ -37,7 +38,7 @@ export async function isUserActive(userId: string): Promise<boolean> {
   if (error) throw new Error("APP_STATUS_UNAVAILABLE");
   if (!data) return true; // no row ⇒ ACTIVE
   return Boolean(data.is_active);
-}
+});
 
 /** Keeps request URLs short when a list has hundreds of ids. */
 const ID_CHUNK = 150;
