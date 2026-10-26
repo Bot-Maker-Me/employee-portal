@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile, isAdmin as isAdminUser } from "@/lib/profile";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SectionMarker } from "@/components/section-marker";
+import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { NotificationSettings } from "@/components/notification-settings";
 import { isPushSendConfigured } from "@/lib/push-server";
 
@@ -35,7 +36,10 @@ export default async function AccountPage() {
       <section className="max-w-2xl rounded-ledger border border-line bg-raised p-6">
         <dl>
           <Detail label="Name" value={profile?.full_name ?? "—"} />
-          <Detail label="Email" value={profile?.email ?? user.email ?? "—"} />
+          <Detail
+            label="Username"
+            value={profile?.username ?? "Not set — ask your administrator"}
+          />
           <Detail label="Organization" value={profile?.organization ?? "Not linked"} />
           <Detail
             label="Role"
@@ -48,6 +52,13 @@ export default async function AccountPage() {
         </dl>
       </section>
 
+      <section className="max-w-2xl space-y-3">
+        <SectionMarker index="06" label="Password" />
+        <div className="rounded-ledger border border-line bg-raised p-6">
+          <ChangePasswordForm />
+        </div>
+      </section>
+
       <NotificationSettings
         userId={user.id}
         isAdmin={isAdmin}
@@ -55,7 +66,7 @@ export default async function AccountPage() {
       />
 
       <section className="max-w-2xl space-y-3">
-        <SectionMarker index="06" label="Session" />
+        <SectionMarker index="07" label="Session" />
         <div className="rounded-ledger border border-line bg-raised p-6">
           <p className="text-[14px] text-muted">
             You’re signed in securely. For patient-data safety you’ll be signed

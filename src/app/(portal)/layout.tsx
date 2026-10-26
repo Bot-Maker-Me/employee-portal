@@ -11,6 +11,8 @@ import { IdleTimeout } from "@/components/idle-timeout";
 import { PushWatcher } from "@/components/push-watcher";
 import { UnlinkedAccount } from "@/components/unlinked-account";
 import { PendingApproval } from "@/components/pending-approval";
+import { AccountDeactivated } from "@/components/account-deactivated";
+import { isUserActive } from "@/lib/app-status";
 import type { FeatureFlags } from "@/lib/features";
 
 const NO_FLAGS: FeatureFlags = {
@@ -35,6 +37,11 @@ export default async function PortalLayout({
   if (!profile) return <UnlinkedAccount />;
   if (!isApproved(profile)) return <PendingApproval />;
   if (!profile.organization && !isSuperAdmin(profile)) return <UnlinkedAccount />;
+
+  // Deactivated for this app? (A missing row means active.) Unknown status is
+  // treated as inactive — no portal data is rendered in either case.
+  const active = await isUserActive(user.id).catch(() => false);
+  if (!active) return <AccountDeactivated />;
 
   const admin = isAdmin(profile);
   const flags = profile.organization

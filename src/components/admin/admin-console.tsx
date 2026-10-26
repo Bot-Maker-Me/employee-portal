@@ -145,7 +145,7 @@ export function AdminConsole({
                       {user.full_name ?? "Unnamed user"}
                     </p>
                     <p className="label-mono truncate text-muted">
-                      {user.email ?? "—"}
+                      {user.role ?? "employee"}
                     </p>
                   </div>
                   <select
@@ -156,7 +156,7 @@ export function AdminConsole({
                         [user.id]: event.target.value,
                       }))
                     }
-                    aria-label={`Organization for ${user.email ?? "user"}`}
+                    aria-label={`Organization for ${user.full_name ?? "user"}`}
                     className="rounded-btn border border-line bg-sunken px-3 py-2 text-[14px] text-ink focus:border-accent focus:outline-none"
                   >
                     <option value="">Select organization…</option>
@@ -176,7 +176,7 @@ export function AdminConsole({
                         `approve-${user.id}`,
                         "admin_approve_user",
                         { p_user_id: user.id, p_organization: selected },
-                        `${user.email ?? "User"} approved.`,
+                        `${user.full_name ?? "User"} approved.`,
                       )
                     }
                     disabled={busy !== null || !selected}
@@ -220,7 +220,7 @@ export function AdminConsole({
                       )}
                     </p>
                     <p className="label-mono truncate text-muted">
-                      {user.email ?? "—"}
+                      {user.role ?? "employee"}
                       {user.organization ? ` · ${user.organization}` : ""}
                     </p>
                   </div>
@@ -239,7 +239,7 @@ export function AdminConsole({
                           "Organization updated.",
                         )
                       }
-                      aria-label={`Organization for ${user.email ?? "user"}`}
+                      aria-label={`Organization for ${user.full_name ?? "user"}`}
                       className="rounded-btn border border-line bg-sunken px-3 py-2 text-[14px] text-ink focus:border-accent focus:outline-none"
                     >
                       <option value="">No organization</option>
@@ -267,7 +267,7 @@ export function AdminConsole({
                           "Role updated.",
                         )
                       }
-                      aria-label={`Role for ${user.email ?? "user"}`}
+                      aria-label={`Role for ${user.full_name ?? "user"}`}
                       className="rounded-btn border border-line bg-sunken px-3 py-2 text-[14px] text-ink focus:border-accent focus:outline-none disabled:opacity-50"
                     >
                       <option value="employee">Employee</option>

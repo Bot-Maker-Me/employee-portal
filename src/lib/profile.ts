@@ -3,12 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 export type Profile = {
   id: string;
   full_name: string | null;
+  username: string | null;
   email: string | null;
   role: string | null;
   organization: string | null;
   status: string | null;
   pharmacy_id: string | null;
   home_id: string | null;
+  must_change_password: boolean;
 };
 
 /**
@@ -21,7 +23,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, full_name, email, role, organization, status, pharmacy_id, home_id")
+      .select(
+        "id, full_name, username, email, role, organization, status, pharmacy_id, home_id, must_change_password",
+      )
       .eq("id", userId)
       .maybeSingle();
 

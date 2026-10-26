@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,9 +8,8 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { Eye, EyeOff, Lock, Mail, TriangleAlert } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { friendlyAuthError } from "@/lib/auth-errors";
+import { Eye, EyeOff, Lock, TriangleAlert, User } from "lucide-react";
+import { usernameSignIn } from "@/lib/auth/actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoginCard } from "@/components/login/login-card";
@@ -21,8 +20,6 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 const FIELD =
   "h-12 w-full rounded-field border border-paper-line bg-field pl-11 pr-11 text-[15px] text-paper-ink shadow-field transition-all duration-300 placeholder:text-paper-muted focus:border-accent focus:outline-none focus:shadow-[0_0_0_4px_var(--accent-ring)]";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Coral underline that draws in from the left while the field has focus. */
 function FocusUnderline() {
@@ -36,51 +33,44 @@ function FocusUnderline() {
 
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const emailShake = useAnimationControls();
-  const emailValid = EMAIL_RE.test(email.trim());
+  const loading = busy || success;
+  const canSubmit = username.trim().length > 0 && password.length > 0;
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loading || !canSubmit) return;
     setError(null);
-    setLoading(true);
+    setBusy(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    let result: Awaited<ReturnType<typeof usernameSignIn>>;
+    try {
+      result = await usernameSignIn({ username, password, redirectTo });
+    } catch {
+      setBusy(false);
+      setError("We couldn’t complete that request. Please try again.");
+      return;
+    }
 
-    if (signInError) {
-      setError(friendlyAuthError(signInError.message));
-      setLoading(false);
+    if (!result.ok) {
+      setBusy(false);
+      setError(result.message);
       return;
     }
 
     setSuccess(true);
-    // Give the success morph a moment to land before the route changes.
-    await new Promise((resolve) => window.setTimeout(resolve, 750));
-
-    const target = redirectTo && redirectTo.startsWith("/") ? redirectTo : "/home";
-    router.replace(target);
+    // Let the success morph land before the route changes.
+    await new Promise((resolve) => window.setTimeout(resolve, 650));
+    router.replace(result.next);
     router.refresh();
-  }
-
-  function handleEmailBlur() {
-    if (email.length > 0 && !emailValid) {
-      emailShake.start(
-        { x: [0, -8, 8, -6, 6, -3, 0] },
-        { duration: 0.4, ease: "easeInOut" },
-      );
-    }
   }
 
   function syncCapsLock(event: ReactKeyboardEvent<HTMLInputElement>) {
@@ -89,7 +79,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
 
   return (
     <LoginCard error={error} success={success}>
-      <form onSubmit={onSubmit} className="mt-7 space-y-5" noValidate>
+      <form onSubmit={submit} className="mt-7 space-y-5" noValidate>
         <AnimatePresence initial={false}>
           {error && (
             <motion.p
@@ -106,64 +96,35 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
           )}
         </AnimatePresence>
 
-        {/* Email */}
+        {/* Username */}
         <div className="group space-y-2">
           <Label
-            htmlFor="email"
+            htmlFor="username"
             className="transition-all duration-300 group-focus-within:-translate-y-0.5 group-focus-within:text-accent"
           >
-            Email
+            Username
           </Label>
-          <motion.div animate={emailShake} className="relative">
-            <Mail
+          <div className="relative">
+            <User
               className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-paper-muted transition-all duration-300 group-focus-within:translate-x-0.5 group-focus-within:text-accent"
               aria-hidden="true"
             />
             <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              onBlur={handleEmailBlur}
-              placeholder="you@organisation.com"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="your.username"
               className={FIELD}
             />
             <FocusUnderline />
-            <AnimatePresence>
-              {emailValid && (
-                <motion.span
-                  key="valid"
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ok"
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <motion.path
-                      d="M4 12.5l5 5L20 6.5"
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                    />
-                  </svg>
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.div>
+          </div>
         </div>
 
         {/* Password */}
@@ -253,18 +214,22 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
           type="submit"
           loading={loading}
           success={success}
-          disabled={loading || success}
+          disabled={loading || !canSubmit}
         >
           Sign in
         </MagneticButton>
 
-        <div className="pt-1 text-center">
+        <div className="space-y-2 pt-1 text-center">
           <Link
             href="/forgot-password"
-            className="link-underline label-mono text-muted transition-colors hover:text-ink"
+            className="link-underline label-mono block text-muted transition-colors hover:text-ink"
           >
-            Forgot password?
+            Forgot password? Ask your administrator
           </Link>
+          <p className="text-[12px] leading-relaxed text-muted">
+            Sign in with the username your administrator gave you. Accounts are
+            created by an administrator — there is no email sign-up.
+          </p>
         </div>
       </form>
     </LoginCard>

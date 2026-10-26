@@ -6,8 +6,9 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - **Next.js (App Router)** — server components for data, route handlers/server actions for mutations, `middleware.ts` for auth.
 - **TypeScript** — all source uses `.ts` / `.tsx`; no plain JavaScript.
 - **Tailwind CSS** — all styling via utility classes + design tokens (see below).
-- **Supabase** — Postgres, Auth (email/password only), Realtime. One shared project with the Pharma Portal app.
-- **@supabase/ssr** — cookie-based sessions; browser client in `src/lib/supabase/client.ts`, server client in `src/lib/supabase/server.ts`, session refresh in `src/lib/supabase/middleware.ts`.
+- **Supabase** — Postgres, Auth, Realtime. One shared project with the sibling apps (they keep signing in with **email** + password).
+- **@supabase/ssr** — cookie-based sessions; browser client in `src/lib/supabase/client.ts`, server client in `src/lib/supabase/server.ts`, session refresh + auth gates in `src/lib/supabase/middleware.ts`.
+- **@supabase/supabase-js** — server-only service-role client in `src/lib/supabase/admin.ts` (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`). Used to resolve a username to its auth account, read `app_user_status`, and call the Auth Admin API.
 - **next/font** — Playfair Display (headlines), Manrope (body), JetBrains Mono (labels/IDs).
 - **lucide-react** — the only icon set.
 - **clsx + tailwind-merge** via the `cn()` helper in `src/lib/utils.ts`.
@@ -24,7 +25,7 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - **Silk backdrop**: `<div className="silk">` in `src/app/layout.tsx` renders blurred blue fields (`--silk-*` tokens), a light beam, faint ledger rules, grain and drifting light particles (`LightParticles` → `.particle` / `.particle-orb`). Intensity is tuned via the `--silk-*` / `--glint*` tokens only; particle positions/timings come from the fixed table in `src/components/light-particles.tsx` (never randomised, so SSR matches). It is decorative, `aria-hidden`, sits at `z-index: -1`, and must stay dim (no bright whites) so the coral accent text keeps contrast. Neutralised by `prefers-reduced-motion`.
 
 ## Structure
-- App Router pages in `src/app/`; public auth pages are `login`, `signup`, `forgot-password`, `reset-password`, `auth/callback`. The authenticated area is the `src/app/(portal)/` route group (`home`, `pharmacy`, `team`, `account`, `admin`).
+- App Router pages in `src/app/`; public auth pages are `login` (username + password) and `forgot-password` (asks an administrator to reset). There is **no** sign-up, magic link or email reset in this app. `change-password` is signed-in only and forced by middleware while `profiles.must_change_password` is true. The authenticated area is the `src/app/(portal)/` route group (`home`, `pharmacy`, `team`, `account`, `admin`, `admin/users`, `admin/password-requests`).
 - Reusable components in `src/components/`; UI primitives in `src/components/ui/`; admin components in `src/components/admin/`.
 - Data/helpers in `src/lib/` (`profile.ts`, `admin.ts`, `features.ts`, `channels.ts`, `topics.ts`, `auth-errors.ts`, `supabase/*`).
 - **Pharma Portal bridge** lives in `src/lib/pharma/` (`client.ts`, `directory.ts`, `chat.ts`, `identity.ts`, `actions.ts`) and is **server-only**. Pharmacy Chat reads/writes the separate Pharma/Nursing project (`tenants`, `tenant_members`, `profiles`, `topic_threads`, `topic_messages`). It authenticates with `PHARMA_SUPABASE_SERVICE_ROLE_KEY` (server env only — never `NEXT_PUBLIC_*`). The URL falls back to `https://ayvpdpthxwplbsmhpbva.supabase.co`.
@@ -38,7 +39,9 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - `profiles.role`: `employee` | `admin` | `super_admin`. `profiles.status`: `pending` | `active`.
 - `super_admin` is the platform owner (no `organization` required): creates/deletes organizations, approves users, assigns organizations, toggles features for any org.
 - `admin` manages users for their own `organization`; only `super_admin` toggles feature flags.
-- Anyone can self-register at `/signup`; new profiles start `pending` and see `PendingApproval` until approved. Only `active` profiles enter the portal.
+- **No self-registration.** An admin creates the account (`full name`, `username`, `role`, organization) at `/admin/users`; the auth user gets a hidden placeholder email (`PLACEHOLDER_EMAIL_DOMAIN`, pre-confirmed, never shown or used for sending) and a one-time temporary password shown once on screen.
+- New profiles created that way start `active` with `must_change_password = true` (forced to `/change-password`). Accounts approved through `PendingApproval` follow the old flow; only `active` profiles enter the portal.
+- `profiles.username` is nullable and stored lowercase; a partial unique index on `lower(username)` makes it unique case-insensitively. `profiles.username`/`must_change_password` are NEVER changed by clients — server actions only.
 - Admin actions run through `SECURITY DEFINER` RPCs (`admin_*`) that re-check the caller's role server-side — the client never uses a service-role key.
 
 ## Security & Privacy (healthcare)
@@ -56,3 +59,13 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - Only edit files related to the current request. Do not change existing tables or other apps' code without saying so first.
 - Prefer existing libraries (Supabase, Tailwind, lucide) before adding dependencies.
 - Database changes are delivered as SQL for the user to run — never invented or run silently.
+
+## Username Sign-in (this app only)
+- Login is **username + password**. The username is trimmed + lowercased server-side, resolved to the account's auth email with the service role key (`src/lib/auth/actions.ts` → `usernameSignIn`), and only then passed to `signInWithPassword`. The email never reaches the browser, a log or an error message.
+- Failures are indistinguishable: wrong username, wrong password, deactivated account and account-without-username all return `Incorrect username or password.` (`src/lib/auth/username.ts`). No account match still burns an equal sign-in attempt against a dummy address.
+- Lockout: `login_attempts` (server-only) — 5 failures per username **or** IP in 15 minutes blocks for 15 minutes via `TOO_MANY_ATTEMPTS_ERROR`. Every attempt is recorded.
+- Per-app account state lives in `app_user_status` (`APP_KEY = 'employee_portal'` in `src/lib/app-status.ts`); a missing row means ACTIVE. Deactivating a user blocks this app only — the sibling apps are untouched.
+- Passwords: user-driven change on `/change-password` + the Account page (`currentPassword` re-authenticated server-side, min 10 chars, not the username, not the old password, then other sessions revoked). Admin-driven reset (`adminSetTemporaryPassword`) generates a 20-char password, forces a change and shows it ONCE. Neither path ever stores, logs, emails or audits a password.
+- Admin rules: an org admin only manages their own organization; only a platform admin may reset another admin's password; nobody may change their own app status or deactivate the last remaining admin. Every action re-checks the caller's role in the database (`src/lib/admin/guard.ts`).
+- Audit actions (`auth_audit_log`): `password_changed`, `admin_reset`, `user_created`, `user_deactivated`, `user_reactivated`, `username_set`, `login_blocked` — actions only, never a secret.
+- Tests: `supabase/tests/username_auth_tests.sql` (RLS). Username review + backfill: `sql/username_review.sql`, `sql/username_backfill.sql` (the backfill only fills NULL usernames).

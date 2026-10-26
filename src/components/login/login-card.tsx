@@ -7,7 +7,6 @@ import {
   useMotionValue,
   useSpring,
 } from "framer-motion";
-import Link from "next/link";
 import {
   useEffect,
   type CSSProperties,
@@ -135,14 +134,9 @@ export function LoginCard({
             </motion.h2>
 
             <p className="mt-2.5 text-[14px] leading-relaxed text-muted">
-              Sign in, or{" "}
-              <Link
-                href="/signup"
-                className="link-underline text-ink transition-colors hover:text-accent-soft"
-              >
-                create an account
-              </Link>{" "}
-              — new accounts are approved by an administrator.
+              Sign in with the username and password your administrator gave
+              you. There is no email sign-up and no reset link — a password
+              reset is issued by an administrator.
             </p>
 
             {children}
