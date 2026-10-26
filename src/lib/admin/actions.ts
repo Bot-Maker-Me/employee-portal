@@ -39,9 +39,16 @@ function isAdminRole(role: string | null): boolean {
   return role === "admin" || role === "super_admin";
 }
 
+/** The database still enforces the old charset — migration 0004 not applied. */
+const USERNAME_CHARSET_ERROR =
+  "That username uses characters the database doesn’t accept yet. Apply supabase/migrations/0004_username_charset.sql, then set it again.";
+
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message === "USERNAME_TAKEN") {
     return "That username is already taken.";
+  }
+  if (error instanceof Error && error.message === "USERNAME_CHARSET_REJECTED") {
+    return USERNAME_CHARSET_ERROR;
   }
   return fallback;
 }
@@ -178,11 +185,13 @@ export async function adminCreateUser(input: {
       organization,
       hasPlaceholderEmail: true,
     });
-  } catch {
+  } catch (error) {
     return {
       ok: false,
-      message:
+      message: errorMessage(
+        error,
         "The sign-in account was created, but its profile could not be set up. Ask a platform administrator to finish it.",
+      ),
     };
   }
 

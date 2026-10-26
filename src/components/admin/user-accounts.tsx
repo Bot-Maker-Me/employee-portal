@@ -24,7 +24,7 @@ import {
   adminSetUsername,
 } from "@/lib/admin/actions";
 import type { ManagedUser } from "@/lib/auth/store";
-import { USERNAME_HINT } from "@/lib/auth/username";
+import { USERNAME_HINT, normalizeUsername } from "@/lib/auth/username";
 import { formatFullStamp } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,6 +167,8 @@ export function UserAccounts({
   const [role, setRole] = useState("employee");
   const [organization, setOrganization] = useState(defaultOrg);
   const check = useUsernameCheck(username);
+  // What the server will actually store: trimmed, lowercased, single spaces.
+  const savedAs = normalizeUsername(username);
 
   // Bulk create
   const [bulkPrefix, setBulkPrefix] = useState("staff");
@@ -410,6 +412,13 @@ export function UserAccounts({
           >
             {check ? check.message : USERNAME_HINT}
           </p>
+          {savedAs.length >= 3 && savedAs !== username.trim() && (
+            <p className="text-[12px] text-muted">
+              Saved and matched as{" "}
+              <span className="font-mono text-ink">@{savedAs}</span> — they sign
+              in with that, lower case and all.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

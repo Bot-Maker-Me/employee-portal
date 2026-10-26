@@ -226,10 +226,13 @@ export async function changePassword(input: {
   if (updateError) {
     const text = (updateError.message ?? "").toLowerCase();
     if (text.includes("at least") || text.includes("weak")) {
-      return {
-        ok: false,
-        message: `Please use at least ${MIN_PASSWORD_LENGTH} characters.`,
-      };
+      // Supabase has its own project-wide minimum length (Authentication →
+      // Settings). Echo the number it actually enforces so the message is
+      // never wrong, and fall back to ours when it is not stated.
+      const stated = Number((updateError.message.match(/(\d+)/) ?? [])[1] ?? 0);
+      const minimum =
+        Number.isFinite(stated) && stated > 0 ? stated : MIN_PASSWORD_LENGTH;
+      return { ok: false, message: `Please use at least ${minimum} characters.` };
     }
     return { ok: false, message: "We couldn’t update your password. Please try again." };
   }

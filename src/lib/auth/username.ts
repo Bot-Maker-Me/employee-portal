@@ -8,8 +8,18 @@
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 32;
 
-/** Lowercase letters, numbers, dot, underscore, hyphen. */
-export const USERNAME_PATTERN = /^[a-z0-9._-]{3,32}$/;
+/**
+ * Letters, numbers, spaces and . _ - ' — deliberately forgiving, so an
+ * administrator can type a name the way they would write it: "Sherif Youssef",
+ * "Sherif.Youssef", "O'Brien", "staff-01", "staff_01".
+ *
+ * Input is trimmed, lowercased and whitespace-collapsed by `normalizeUsername`
+ * before it is stored or matched, so the case an administrator types never
+ * matters and a double space can never lock anyone out. Stored values stay
+ * lowercase, which is what the database CHECK and the unique index on
+ * `lower(username)` expect.
+ */
+export const USERNAME_PATTERN = /^[a-z0-9 ._'-]{3,32}$/i;
 
 export const GENERIC_LOGIN_ERROR = "Incorrect username or password.";
 export const TOO_MANY_ATTEMPTS_ERROR = "Too many attempts. Try again later.";
@@ -19,9 +29,12 @@ export const SERVICE_UNAVAILABLE_ERROR =
 export const RESET_REQUEST_MESSAGE =
   "If this username exists, your administrator has been notified.";
 
-/** Trimmed and lowercased — the form the database stores and matches on. */
+/**
+ * Trimmed, lowercased and with runs of whitespace collapsed to one space — the
+ * form the database stores and matches on. "Sherif  Youssef " ⇒ "sherif youssef".
+ */
 export function normalizeUsername(input: string): string {
-  return input.trim().toLowerCase();
+  return input.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export function isValidUsername(username: string): boolean {
@@ -39,4 +52,4 @@ export function usernameForAttempt(username: string): string {
 
 /** Proof-level copy, shown next to a field. */
 export const USERNAME_HINT =
-  "3–32 characters: letters, numbers, dot, underscore or hyphen.";
+  "3–32 characters: letters, numbers, spaces, dot, underscore, hyphen or apostrophe.";

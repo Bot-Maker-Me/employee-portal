@@ -91,6 +91,8 @@ export async function setProfileUsername(
     .eq("id", userId);
   if (!error) return;
   if (error.code === "23505") throw new Error("USERNAME_TAKEN");
+  // 23514 = CHECK violation, i.e. the stored charset rule is still the old one.
+  if (error.code === "23514") throw new Error("USERNAME_CHARSET_REJECTED");
   throw new Error("USERNAME_WRITE_FAILED");
 }
 
@@ -136,7 +138,10 @@ export async function completeCreatedProfile(options: {
     .update(patch)
     .eq("id", options.userId);
 
-  if (error) throw new Error("PROFILE_WRITE_FAILED");
+  if (error) {
+    if (error.code === "23514") throw new Error("USERNAME_CHARSET_REJECTED");
+    throw new Error("PROFILE_WRITE_FAILED");
+  }
 }
 
 export type ManagedUser = {

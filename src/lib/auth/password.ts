@@ -1,11 +1,17 @@
 /**
  * Password policy for this app.
  *
- * The password itself is unchanged in the shared project and still works for
- * the sibling apps' email sign-in, so the policy is enforced here (not in Auth
- * settings, which are project-wide and shared).
+ * Deliberately permissive: this operator asked to be able to choose short
+ * passwords (4 characters). The password itself is unchanged in the shared
+ * project and still works for the sibling apps' email sign-in, so the policy is
+ * enforced here rather than in Auth settings.
+ *
+ * NOTE: Supabase Auth enforces its OWN project-wide minimum length
+ * (Authentication → Settings → "Minimum password length", default 6) and the
+ * API rejects anything shorter. Lower that setting to match, or a password this
+ * short will be refused by the server with a length error.
  */
-export const MIN_PASSWORD_LENGTH = 10;
+export const MIN_PASSWORD_LENGTH = 4;
 /** Supabase hashes with bcrypt: beyond 72 characters input is truncated. */
 export const MAX_PASSWORD_LENGTH = 72;
 
