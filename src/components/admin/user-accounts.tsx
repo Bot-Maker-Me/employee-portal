@@ -12,9 +12,11 @@ import {
   Search,
   ShieldAlert,
   UserCog,
+  Users,
   X,
 } from "lucide-react";
 import {
+  adminBulkCreateUsers,
   adminCheckUsername,
   adminCreateUser,
   adminSetTemporaryPassword,
@@ -27,10 +29,15 @@ import { formatFullStamp } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TempPasswordReveal } from "@/components/admin/temp-password";
+import {
+  TempPasswordList,
+  TempPasswordReveal,
+} from "@/components/admin/temp-password";
 import { cn } from "@/lib/utils";
 
 type CheckResult = { available: boolean; message: string } | null;
+
+type BulkEntry = { username: string; tempPassword: string };
 
 /** Live availability check, debounced so typing does not hammer the server. */
 function useUsernameCheck(username: string): CheckResult {
@@ -161,6 +168,12 @@ export function UserAccounts({
   const [organization, setOrganization] = useState(defaultOrg);
   const check = useUsernameCheck(username);
 
+  // Bulk create
+  const [bulkPrefix, setBulkPrefix] = useState("staff");
+  const [bulkCount, setBulkCount] = useState("10");
+  const [bulkStart, setBulkStart] = useState("1");
+  const [bulkIssued, setBulkIssued] = useState<BulkEntry[] | null>(null);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return users;
@@ -202,6 +215,37 @@ export function UserAccounts({
       setFullName("");
       setUsername("");
       setRole("employee");
+      router.refresh();
+    });
+  }
+
+  function bulkCreate() {
+    startTransition(async () => {
+      setBusy("bulk");
+      setError(null);
+      setNotice(null);
+      setBulkIssued(null);
+      let result: Awaited<ReturnType<typeof adminBulkCreateUsers>>;
+      try {
+        result = await adminBulkCreateUsers({
+          count: Number(bulkCount) || 0,
+          prefix: bulkPrefix,
+          startAt: Number(bulkStart) || 1,
+          role,
+          organization,
+        });
+      } catch {
+        setBusy(null);
+        setError("We couldn’t complete that request. Please try again.");
+        return;
+      }
+      setBusy(null);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setBulkIssued(result.created);
+      setNotice(result.message);
       router.refresh();
     });
   }
@@ -276,6 +320,14 @@ export function UserAccounts({
           title={issued.title}
           password={issued.password}
           onDismiss={() => setIssued(null)}
+        />
+      )}
+
+      {bulkIssued && (
+        <TempPasswordList
+          title="Hand each person their own line. Accounts are created and active in this app only."
+          entries={bulkIssued}
+          onDismiss={() => setBulkIssued(null)}
         />
       )}
 
@@ -413,6 +465,80 @@ export function UserAccounts({
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           )}
           Create account &amp; show temporary password
+        </Button>
+      </section>
+
+      {/* Bulk create --------------------------------------------------------- */}
+      <section className="max-w-2xl space-y-4 rounded-ledger border border-line bg-raised p-5">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-accent-soft" aria-hidden="true" />
+          <h2 className="font-serif text-xl text-ink">Create a batch</h2>
+        </div>
+        <p className="text-[13px] text-muted">
+          Usernames are <span className="text-ink">{bulkPrefix}001</span>,{" "}
+          {bulkPrefix}002… Every account gets its own hidden placeholder address
+          and its own temporary password, and must set a new password at first
+          sign-in. Rename any username later from the list below.
+        </p>
+        <p className="flex items-start gap-2 rounded-btn border border-warn/60 px-3.5 py-2.5 text-[13px] text-warn">
+          <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          This project is shared with your other apps, so every account you
+          create here also appears in their user lists. Keep test batches small.
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="bulk-prefix">Username prefix</Label>
+            <Input
+              id="bulk-prefix"
+              value={bulkPrefix}
+              maxLength={20}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              onChange={(event) => setBulkPrefix(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bulk-count">How many (max 50)</Label>
+            <Input
+              id="bulk-count"
+              type="number"
+              min={1}
+              max={50}
+              value={bulkCount}
+              onChange={(event) => setBulkCount(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bulk-start">Start at number</Label>
+            <Input
+              id="bulk-start"
+              type="number"
+              min={1}
+              max={99999}
+              value={bulkStart}
+              onChange={(event) => setBulkStart(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <p className="text-[13px] text-muted">
+          Role and organization for the batch are the ones selected in “Create an
+          account” above: <span className="text-ink">{role}</span>
+          {organization ? ` · ${organization}` : ""}.
+        </p>
+
+        <Button
+          onClick={bulkCreate}
+          disabled={pending || busy !== null || !organization}
+        >
+          {busy === "bulk" ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Users className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          Create batch &amp; show temporary passwords
         </Button>
       </section>
 

@@ -195,6 +195,161 @@ export async function adminCreateUser(input: {
   return { ok: true, message: `Account created for ${username}.`, tempPassword };
 }
 
+export type BulkCreatedUser = { username: string; tempPassword: string };
+export type BulkCreateResult =
+  | { ok: true; message: string; created: BulkCreatedUser[]; failed: number }
+  | { ok: false; message: string };
+
+/**
+ * Creates several accounts at once (test/demo batches, onboarding a team).
+ * Usernames are `<prefix><number>`, each account gets its own hidden placeholder
+ * address and its own temporary password, and everyone is forced to choose a
+ * password at first sign-in. Runs through the Supabase Auth Admin API, so every
+ * account is guaranteed to be able to sign in.
+ */
+export async function adminBulkCreateUsers(input: {
+  count: number;
+  prefix: string;
+  startAt: number;
+  role: string;
+  organization: string;
+}): Promise<BulkCreateResult> {
+  const ctx = await getAdminContext();
+  if (!ctx) return { ok: false, message: FORBIDDEN };
+  if (!isServiceRoleConfigured()) return { ok: false, message: SERVICE_UNAVAILABLE_ERROR };
+
+  const limit = await enforceRateLimit({
+    bucket: "admin_bulk_create",
+    userLimit: 5,
+    windowSeconds: 900,
+    ipLimit: 20,
+  });
+  if (!limit.ok) return { ok: false, message: TOO_MANY_ATTEMPTS_ERROR };
+
+  const count = Math.min(Math.max(Math.floor(Number(input?.count) || 0), 1), 50);
+  const prefix = normalizeUsername(String(input?.prefix ?? "staff"));
+  const startAt = Math.min(Math.max(Math.floor(Number(input?.startAt) || 1), 1), 99999);
+  const role = String(input?.role ?? "employee");
+  const requestedOrg = String(input?.organization ?? "").trim();
+  const organization = ctx.isSuperAdmin
+    ? requestedOrg
+    : (ctx.profile.organization ?? "");
+
+  if (!isValidUsername(`${prefix}${"1".padStart(3, "0")}`)) {
+    return {
+      ok: false,
+      message: `That prefix can’t make valid usernames (${USERNAME_HINT}).`,
+    };
+  }
+  if (role !== "employee" && role !== "admin") {
+    return { ok: false, message: "That role isn’t allowed." };
+  }
+  if (!organization) return { ok: false, message: "Pick an organization first." };
+
+  const domain = (process.env.PLACEHOLDER_EMAIL_DOMAIN ?? "").trim();
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain) || /\s/.test(domain)) {
+    console.error("[admin] PLACEHOLDER_EMAIL_DOMAIN is not configured");
+    return {
+      ok: false,
+      message:
+        "Creating accounts is not configured on this server (PLACEHOLDER_EMAIL_DOMAIN).",
+    };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("name")
+    .eq("name", organization)
+    .maybeSingle();
+  if (!org) return { ok: false, message: "That organization doesn’t exist yet." };
+
+  // One index range scan instead of a query per candidate. The upper bound is a
+  // high code point, so no LIKE metacharacter (the prefix may contain . _ -).
+  const { data: existing, error: existingError } = await admin
+    .from("profiles")
+    .select("username")
+    .gte("username", prefix)
+    .lt("username", `${prefix}\uffff`)
+    .limit(1000);
+
+  if (existingError) return { ok: false, message: GENERIC_FAILURE };
+
+  const taken = new Set(
+    (existing ?? [])
+      .map((row) => (row.username ? String(row.username).toLowerCase() : ""))
+      .filter(Boolean),
+  );
+
+  const usernames: string[] = [];
+  let index = startAt;
+  while (usernames.length < count && index < startAt + count + 500) {
+    const candidate = `${prefix}${String(index).padStart(3, "0")}`;
+    index += 1;
+    if (!isValidUsername(candidate) || taken.has(candidate)) continue;
+    taken.add(candidate);
+    usernames.push(candidate);
+  }
+
+  if (usernames.length === 0) {
+    return { ok: false, message: "No free usernames with that prefix and start." };
+  }
+
+  const created: BulkCreatedUser[] = [];
+  const createdIds: string[] = [];
+  let failed = 0;
+
+  for (const username of usernames) {
+    const tempPassword = generateTemporaryPassword();
+    const { data: account, error } = await admin.auth.admin.createUser({
+      email: `${randomLocalPart()}@${domain}`,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { full_name: username },
+    });
+
+    const newId = account?.user?.id ? String(account.user.id) : null;
+    if (error || !newId) {
+      failed += 1;
+      console.warn(`[admin] bulk creation failed (${error?.status ?? "unknown"})`);
+      continue;
+    }
+
+    try {
+      await completeCreatedProfile({
+        userId: newId,
+        fullName: username,
+        username,
+        role,
+        organization,
+        hasPlaceholderEmail: true,
+      });
+    } catch {
+      failed += 1;
+      continue;
+    }
+
+    created.push({ username, tempPassword });
+    createdIds.push(newId);
+  }
+
+  await Promise.all(
+    createdIds.map((targetUserId) =>
+      logAuthEvent({ action: "user_created", actorId: ctx.userId, targetUserId }),
+    ),
+  );
+
+  return {
+    ok: true,
+    message: `${created.length} account${created.length === 1 ? "" : "s"} created${
+      failed > 0 ? ` (${failed} failed)` : ""
+    }. Each one must set a new password at first sign-in.`,
+    created,
+    failed,
+  };
+}
+
 export async function adminSetUsername(input: {
   userId: string;
   username: string;
