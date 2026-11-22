@@ -8,6 +8,7 @@ import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
 import { listThreads } from "@/lib/pharma/chat";
 import { listPharmacies } from "@/lib/pharma/directory";
+import { getTenantGate, tenantVisible } from "@/lib/sites/data";
 import { FeatureDisabled } from "@/components/feature-disabled";
 import { PharmaUnconfigured } from "@/components/pharma-unconfigured";
 import { SectionMarker } from "@/components/section-marker";
@@ -29,10 +30,13 @@ export default async function PharmacyChatPage() {
 
   if (!isPharmaConfigured()) return <PharmaUnconfigured />;
 
-  const [threads, pharmacies] = await Promise.all([
+  const [allThreads, pharmacies, gate] = await Promise.all([
     listThreads(profile.organization),
     listPharmacies(),
+    getTenantGate(profile),
   ]);
+  // Chats with a pharmacy the user hasn't been given access to stay hidden.
+  const threads = allThreads.filter((thread) => tenantVisible(gate, thread.pharmacy_id));
   const nameById = new Map(pharmacies.map((pharmacy) => [pharmacy.id, pharmacy.name]));
 
   return (

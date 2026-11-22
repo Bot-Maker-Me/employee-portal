@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/users", label: "User accounts" },
+  { href: "/admin/pharmacies", label: "Pharmacies" },
   { href: "/admin/password-requests", label: "Password requests" },
 ];
 
-/** Small sub-navigation shared by the three admin views. */
+/** Small sub-navigation shared by the admin views. */
 export function AdminNav({ pendingRequests = 0 }: { pendingRequests?: number }) {
   const pathname = usePathname();
 

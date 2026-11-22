@@ -6,22 +6,33 @@ import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
 import { listPharmacies } from "@/lib/pharma/directory";
+import { getTenantGate, tenantVisible } from "@/lib/sites/data";
 import { FeatureDisabled } from "@/components/feature-disabled";
 import { PharmaUnconfigured } from "@/components/pharma-unconfigured";
 import { SectionMarker } from "@/components/section-marker";
 import { NewPharmacyChatForm } from "@/components/new-pharmacy-chat-form";
 
-export default async function NewPharmacyChatPage() {
+export default async function NewPharmacyChatPage({
+  searchParams,
+}: {
+  searchParams: { pharmacy?: string };
+}) {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 
   // The directory lives in the other project, so fetch it alongside the profile
   // rather than after it.
-  const [profile, pharmacies] = await Promise.all([
+  const [profile, directory] = await Promise.all([
     getProfile(userId),
     listPharmacies(),
   ]);
   if (!profile?.organization) redirect("/home");
+
+  const gate = await getTenantGate(profile);
+  const pharmacies = directory.filter((pharmacy) => tenantVisible(gate, pharmacy.id));
+  const preselect = pharmacies.some((p) => p.id === searchParams.pharmacy)
+    ? searchParams.pharmacy
+    : undefined;
 
   const flags = await getFeatureFlags(profile.organization);
   if (!flags.employee_pharmacy_topics) {
@@ -62,7 +73,7 @@ export default async function NewPharmacyChatPage() {
             No pharmacies are available to message yet.
           </p>
         ) : (
-          <NewPharmacyChatForm pharmacies={pharmacies} />
+          <NewPharmacyChatForm pharmacies={pharmacies} defaultPharmacyId={preselect} />
         )}
       </div>
     </div>

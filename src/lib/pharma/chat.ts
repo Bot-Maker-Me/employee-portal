@@ -52,6 +52,23 @@ export async function getThreadOrganization(
   return (data?.organization_name as string | null) ?? null;
 }
 
+/** Organization + pharmacy of a thread, for authorization checks. */
+export async function getThreadScope(
+  threadId: string,
+): Promise<{ organization: string | null; pharmacyId: string | null } | null> {
+  const supabase = createPharmaClient();
+  const { data } = await supabase
+    .from("topic_threads")
+    .select("organization_name, pharmacy_id")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    organization: (data.organization_name as string | null) ?? null,
+    pharmacyId: (data.pharmacy_id as string | null) ?? null,
+  };
+}
+
 /**
  * The newest messages on a thread, oldest first. When `since` is given, only
  * messages from that timestamp onwards are returned (inclusive — the client

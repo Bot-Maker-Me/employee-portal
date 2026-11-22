@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getProfile } from "@/lib/profile";
+import { getProfile, type Profile } from "@/lib/profile";
+import { getTenantGate, tenantVisible } from "@/lib/sites/data";
 import { createPharmaClient, isPharmaConfigured } from "@/lib/pharma/client";
 import {
   listPharmacyMembers,
@@ -36,6 +37,7 @@ async function requireActiveEmployee(): Promise<{
   userId: string;
   email: string | null;
   organization: string;
+  profile: Profile;
 } | null> {
   const supabase = createClient();
   const {
@@ -51,6 +53,7 @@ async function requireActiveEmployee(): Promise<{
     userId: user.id,
     email: user.email ?? null,
     organization: profile.organization,
+    profile,
   };
 }
 
@@ -72,6 +75,10 @@ export async function listPharmacyMembersAction(
     windowSeconds: 60,
   });
   if (!limit.ok) return [];
+
+  // Pharmacies linked to a portal pharmacy are limited to staff with access.
+  const gate = await getTenantGate(session.profile);
+  if (!tenantVisible(gate, parsed.data.pharmacyId)) return [];
 
   try {
     return await listPharmacyMembers(parsed.data.pharmacyId);
@@ -106,6 +113,9 @@ export async function createPharmacyThread(input: {
     windowSeconds: 3600,
   });
   if (!limit.ok) return { error: "RATE_LIMITED", retryAfter: limit.retryAfter };
+
+  const gate = await getTenantGate(session.profile);
+  if (!tenantVisible(gate, data.pharmacyId)) return { error: "FORBIDDEN" };
 
   try {
     const pharma = createPharmaClient();
@@ -189,10 +199,14 @@ export async function sendPharmacyMessage(
     // Authorize: the thread must belong to the caller's organization.
     const { data: thread } = await pharma
       .from("topic_threads")
-      .select("organization_name, status, created_by")
+      .select("organization_name, pharmacy_id, status, created_by")
       .eq("id", threadId)
       .maybeSingle();
     if (!thread || thread.organization_name !== session.organization) {
+      return { error: "FORBIDDEN" };
+    }
+    const gate = await getTenantGate(session.profile);
+    if (!tenantVisible(gate, String(thread.pharmacy_id))) {
       return { error: "FORBIDDEN" };
     }
     if (thread.status === "closed") return { error: "CLOSED" };
