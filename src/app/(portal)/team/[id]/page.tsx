@@ -7,10 +7,11 @@ import { FeatureDisabled } from "@/components/feature-disabled";
 import { ChannelView } from "@/components/channel-view";
 
 export default async function ChannelPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const params = await paramsPromise;
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 

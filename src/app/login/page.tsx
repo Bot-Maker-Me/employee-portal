@@ -4,11 +4,12 @@ import { RegisterCard } from "@/components/login/register-card";
 import { LoginForm } from "@/components/login-form";
 import { inter } from "@/lib/fonts";
 
-export default function LoginPage({
-  searchParams,
+export default async function LoginPage({
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { redirectTo?: string; error?: string; reason?: string };
+  searchParams: Promise<{ redirectTo?: string; error?: string; reason?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const redirectTo =
     typeof searchParams.redirectTo === "string" ? searchParams.redirectTo : undefined;
   const timedOut = searchParams.reason === "timeout";

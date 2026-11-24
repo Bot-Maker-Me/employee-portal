@@ -8,8 +8,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # Wait a week before proposing brand-new releases (supply-chain safety).
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7

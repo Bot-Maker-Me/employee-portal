@@ -28,7 +28,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
 export const getFeatureFlags = cache(
   async (organization: string): Promise<FeatureFlags> => {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const [{ data: defs }, { data: overrides }] = await Promise.all([
         supabase.from("features").select("key, default_enabled"),

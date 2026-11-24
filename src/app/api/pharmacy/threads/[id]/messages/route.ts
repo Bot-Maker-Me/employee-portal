@@ -25,8 +25,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params: paramsPromise }: { params: Promise<{ id: string }> },
 ) {
+  const params = await paramsPromise;
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });

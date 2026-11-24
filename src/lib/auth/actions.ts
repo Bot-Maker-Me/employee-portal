@@ -60,7 +60,7 @@ export async function usernameSignIn(input: {
     typeof input?.username === "string" ? input.username : "",
   );
   const password = typeof input?.password === "string" ? input.password : "";
-  const ip = clientIpFromHeaders(headers());
+  const ip = clientIpFromHeaders(await headers());
   const attemptUsername = usernameForAttempt(username);
 
   if (!isServiceRoleConfigured()) {
@@ -119,7 +119,7 @@ export async function usernameSignIn(input: {
     await admin.auth.admin.getUserById(crypto.randomUUID());
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !userId) {
@@ -146,8 +146,8 @@ export async function usernameSignIn(input: {
 
   // Keep the session cookie in step with the database flag, so middleware can
   // gate every route without a query of its own.
-  if (mustChangePassword) markForcedChangePending();
-  else clearForcedChangePending();
+  if (mustChangePassword) await markForcedChangePending();
+  else await clearForcedChangePending();
 
   return {
     ok: true,
@@ -166,7 +166,7 @@ export async function changePassword(input: {
   newPassword: string;
   confirmPassword: string;
 }): Promise<ChangePasswordResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -261,7 +261,7 @@ export async function changePassword(input: {
   }
 
   await setMustChangePassword(userId, false);
-  clearForcedChangePending();
+  await clearForcedChangePending();
   await logAuthEvent({
     action: "password_changed",
     actorId: userId,

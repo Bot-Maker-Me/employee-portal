@@ -38,7 +38,7 @@ export async function requestPasswordReset(input: {
     bucket: "password_reset_request",
     limit: 10,
     windowSeconds: 900,
-    ip: clientIpFromHeaders(headers()),
+    ip: clientIpFromHeaders(await headers()),
   });
   if (!limit.ok) return { ok: false, message: TOO_MANY_ATTEMPTS_ERROR };
 

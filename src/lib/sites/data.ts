@@ -28,7 +28,7 @@ const PHARMACY_COLUMNS = "id, organization, slug, name, sort_order, pharma_tenan
 /** Pharmacies the signed-in user may open (RLS-filtered), in menu order. */
 export const listMyPharmacies = cache(async (): Promise<PortalPharmacy[]> => {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("portal_pharmacies")
       .select(PHARMACY_COLUMNS)
@@ -64,7 +64,7 @@ export async function resolveWorkingOrganization(
   }
   if (!isSuperAdmin(profile)) return { organization: null, choices: [] };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.from("organizations").select("name").order("name");
   const choices = (data ?? []).map((row) => String(row.name));
   if (requested && choices.includes(requested)) {
@@ -86,7 +86,7 @@ export async function listRecords(options: {
 }): Promise<{ rows: RecordRow[]; total: number; truncated: boolean }> {
   const config = RECORD_CONFIGS[options.entity];
   const columns = ["id", ...config.fields.map((field) => field.key)].join(", ");
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let request = supabase
     .from(config.entity)
@@ -132,7 +132,7 @@ export type Notice = {
 };
 
 export async function listNotices(pharmacyId: string): Promise<Notice[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("pharmacy_notices")
     .select("id, title, body, priority, pinned, remind_on, created_at, updated_at")
@@ -154,7 +154,7 @@ export type Policy = {
 };
 
 export async function listPolicies(pharmacyId: string): Promise<Policy[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("pharmacy_policies")
     .select("id, title, category, body, link_url, updated_at")

@@ -16,7 +16,8 @@ export const isoDateTime = z
   .max(40);
 
 /** An opaque thread/channel id. The app ids are UUIDs. */
-export const uuidSchema = z.string().uuid();
+// z.guid() = any 8-4-4-4-12 hex id (zod 3 `.uuid()` behaviour); z4 `.uuid()` is RFC-strict.
+export const uuidSchema = z.guid();
 
 export const topicCategorySchema = z.enum([
   "general",

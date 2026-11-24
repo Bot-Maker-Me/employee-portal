@@ -17,13 +17,13 @@ export type AdminFeature = { feature_key: string; enabled: boolean };
  * server-side, so no service-role key is needed and RLS stays intact.
  */
 export async function getAdminUsers(): Promise<AdminUser[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.rpc("admin_list_users");
   return (data ?? []) as AdminUser[];
 }
 
 export async function getAdminOrganizations(): Promise<AdminOrg[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.rpc("admin_list_organizations");
   return (data ?? []) as AdminOrg[];
 }

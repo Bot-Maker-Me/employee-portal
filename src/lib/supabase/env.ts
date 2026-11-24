@@ -1,20 +1,26 @@
 /**
  * Supabase connection values, resolved once for every client.
  *
- * NEXT_PUBLIC_* env vars win, so a deployment can point at its own Supabase
- * project. When they are absent (no .env file, fresh clone, preview runtime)
- * we fall back to the project provisioned for this app instead of throwing
- * "Your project's URL and Key are required to create a Supabase client!".
+ * Both come from NEXT_PUBLIC_* env vars (set in Vercel for Production and
+ * Preview, and in `.env.local` for development — see `.env.example`).
+ *
+ * The URL is not a secret, so it keeps a fallback to this app's project. The
+ * publishable (anon) key deliberately has NO hard-coded fallback: keys don't
+ * belong in source control (Gitleaks), and a missing key should fail loudly
+ * instead of silently pointing a deployment at the wrong project.
  *
  * Only the publishable (anon) key belongs here — the service role key must
  * never reach the browser.
  */
 const FALLBACK_SUPABASE_URL = "https://yykeefdtlqoublhomfgg.supabase.co";
-const FALLBACK_SUPABASE_ANON_KEY =
-  "sb_publishable_BxVvS2t2OuYXej519eU0Pg_cT4Xp-YN";
 
 export const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || FALLBACK_SUPABASE_URL;
 
-export const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || FALLBACK_SUPABASE_ANON_KEY;
+export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+
+if (!SUPABASE_ANON_KEY && typeof window === "undefined") {
+  console.error(
+    "[supabase] NEXT_PUBLIC_SUPABASE_ANON_KEY is not set — add it to .env.local or the Vercel project settings.",
+  );
+}

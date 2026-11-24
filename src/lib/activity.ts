@@ -19,12 +19,12 @@ type ChannelUnread = { channel_id: string; unread_count: number };
  * these, so a single render must not run the same RPC twice.
  */
 const topicUnreadRows = cache(async (): Promise<TopicUnread[]> => {
-  const { data } = await createClient().rpc("topic_unread_counts");
+  const { data } = await (await createClient()).rpc("topic_unread_counts");
   return (data ?? []) as TopicUnread[];
 });
 
 const channelUnreadRows = cache(async (): Promise<ChannelUnread[]> => {
-  const { data } = await createClient().rpc("channel_unread_counts");
+  const { data } = await (await createClient()).rpc("channel_unread_counts");
   return (data ?? []) as ChannelUnread[];
 });
 
@@ -40,7 +40,7 @@ async function pharmacySummary(
     return { openTopics: 0, unreadTopics: 0 };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const [{ count }, unread] = await Promise.all([
     supabase
       .from("topic_threads")
@@ -83,7 +83,7 @@ export type ActivityItem = {
 async function recentTopics(flags: FeatureFlags): Promise<ActivityItem[]> {
   if (!flags.employee_pharmacy_topics) return [];
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const [{ data: threads }, unread] = await Promise.all([
     supabase
       .from("topic_threads")

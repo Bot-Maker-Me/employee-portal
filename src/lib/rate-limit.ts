@@ -36,7 +36,7 @@ async function hit(args: {
   windowSeconds: number;
   ip: string | null;
 }): Promise<Hit> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await (args.scope === "user"
     ? supabase.rpc("check_rate_limit", {
         p_bucket: args.bucket,
@@ -80,7 +80,7 @@ export async function enforceRateLimit(options: {
   ipLimit?: number;
   ip?: string | null;
 }): Promise<RateLimitOutcome> {
-  const ip = options.ip ?? clientIpFromHeaders(headers());
+  const ip = options.ip ?? clientIpFromHeaders(await headers());
 
   const results = await Promise.all([
     hit({
@@ -121,7 +121,7 @@ export async function enforceIpRateLimit(options: {
   windowSeconds: number;
   ip?: string | null;
 }): Promise<RateLimitOutcome> {
-  const ip = options.ip ?? clientIpFromHeaders(headers());
+  const ip = options.ip ?? clientIpFromHeaders(await headers());
   const result = await hit({
     scope: "ip",
     bucket: options.bucket,
