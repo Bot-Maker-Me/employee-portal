@@ -81,7 +81,7 @@ export async function saveRecord(input: {
   const values = cleanValues(entity.data, input.values);
   if (!values) return { ok: false, message: "Fill in the required fields (and keep them short)." };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const now = new Date().toISOString();
 
   if (input.id) {
@@ -117,7 +117,7 @@ export async function deleteRecord(input: {
   const id = uuidSchema.safeParse(input?.id);
   if (!entity.success || !id.success) return FAILED;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.from(entity.data).delete().eq("id", id.data).select("id");
   if (error || !data?.length) return FORBIDDEN;
 
@@ -163,7 +163,7 @@ export async function importRecords(input: {
     return { ok: false, message: "No usable rows found. Check the column order." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   if (input.replace) {
     const [column, value] = Object.entries(scope)[0];
@@ -224,7 +224,7 @@ export async function saveNotice(input: z.input<typeof noticeSchema>): Promise<S
     remind_on: data.remindOn || null,
   };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   if (data.id) {
     const { data: updated, error } = await supabase
       .from("pharmacy_notices")
@@ -251,7 +251,7 @@ export async function deleteNotice(input: { id: string }): Promise<SiteResult> {
   const id = uuidSchema.safeParse(input?.id);
   if (!id.success) return FAILED;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.from("pharmacy_notices").delete().eq("id", id.data).select("id");
   if (error || !data?.length) return FORBIDDEN;
   revalidateSites();
@@ -292,7 +292,7 @@ export async function savePolicy(input: z.input<typeof policySchema>): Promise<S
     link_url: data.linkUrl ? data.linkUrl : null,
   };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   if (data.id) {
     const { data: updated, error } = await supabase
       .from("pharmacy_policies")
@@ -319,7 +319,7 @@ export async function deletePolicy(input: { id: string }): Promise<SiteResult> {
   const id = uuidSchema.safeParse(input?.id);
   if (!id.success) return FAILED;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.from("pharmacy_policies").delete().eq("id", id.data).select("id");
   if (error || !data?.length) return FORBIDDEN;
   revalidateSites();
@@ -342,7 +342,7 @@ export async function setPharmacyAccess(input: {
   const userId = uuidSchema.safeParse(input?.userId);
   if (!pharmacyId.success || !userId.success) return FAILED;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   if (input.allowed) {
     const { error } = await supabase
       .from("pharmacy_access")
@@ -391,7 +391,7 @@ export async function savePharmacy(input: z.input<typeof pharmacySchema>): Promi
   const data = parsed.data;
   if (!ctx.isSuperAdmin && data.organization !== ctx.profile.organization) return FORBIDDEN;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   if (data.id) {
     const { data: updated, error } = await supabase
       .from("portal_pharmacies")
@@ -430,7 +430,7 @@ export async function deletePharmacy(input: { id: string }): Promise<SiteResult>
   const id = uuidSchema.safeParse(input?.id);
   if (!id.success) return FAILED;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.from("portal_pharmacies").delete().eq("id", id.data).select("id");
   if (error || !data?.length) return FORBIDDEN;
   revalidateSites();

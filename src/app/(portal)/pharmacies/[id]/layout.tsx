@@ -11,11 +11,12 @@ import { PharmacyTabs } from "@/components/sites/pharmacy-tabs";
  */
 export default async function PharmacySectionLayout({
   children,
-  params,
+  params: paramsPromise,
 }: {
   children: React.ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const params = await paramsPromise;
   const { profile } = await requirePortalUser();
   const pharmacy = await getMyPharmacy(params.id);
   if (!pharmacy) notFound();

@@ -6,10 +6,11 @@ import { RecordTable } from "@/components/sites/record-table";
 import { OrgPicker } from "@/components/sites/org-picker";
 
 export default async function InterventionCodesPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { q?: string; org?: string };
+  searchParams: Promise<{ q?: string; org?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const { profile } = await requirePortalUser();
   const { organization, choices } = await resolveWorkingOrganization(profile, searchParams.org);
   const result = await listRecords({

@@ -33,7 +33,7 @@ export type ChannelSummary = {
 };
 
 export async function getDirectory(): Promise<DirectoryEntry[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.rpc("org_directory");
   return (data ?? []) as DirectoryEntry[];
 }
@@ -41,7 +41,7 @@ export async function getDirectory(): Promise<DirectoryEntry[]> {
 export async function listChannelSummaries(
   currentUserId: string,
 ): Promise<ChannelSummary[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: memberships } = await supabase
     .from("employee_channel_members")
@@ -128,7 +128,7 @@ export async function listChannelSummaries(
 }
 
 export async function getChannel(id: string, currentUserId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: channel } = await supabase
     .from("employee_channels")

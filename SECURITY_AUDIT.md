@@ -149,8 +149,11 @@ limits in the dashboard (manual step below).
 key is **not** a secret and is safe in the client — but it is now in git history.
 *Exploit:* anyone with the repo can call the project's REST API with that key;
 RLS (fixed above) is what actually protects the data.
-*Fix:* none required. If you want to sever the fallback, rotate the publishable
-key and remove the constants.
+*Fix (done 2026-11-24):* the key constant was removed — the key now comes only
+from `NEXT_PUBLIC_SUPABASE_ANON_KEY` (set in Vercel for Production and Preview).
+The old value is still in git history, so Gitleaks keeps flagging those commits
+until the publishable key is rotated in Supabase (Settings → API Keys) and the
+history findings are resolved.
 
 **C2 — Hardcoded VAPID **public** key in `src/lib/push.ts` (Info).** Public by
 design; the signing key (`VAPID_PRIVATE_KEY`) is server-only and never in
@@ -274,7 +277,7 @@ A clean run prints only `security_tests: ALL PASSED`; any breach raises a
 
 | Key | Where | Status | Action |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) | `src/lib/supabase/env.ts` fallback + `.env.local` | Public by design; committed as a fallback | Optional: rotate + remove the fallback constant |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) | Vercel env + `.env.local` (fallback constant removed) | Public by design; old value still in git history | Rotate in Supabase to retire the old value |
 | Supabase project URL | `src/lib/supabase/env.ts`, `src/lib/pharma/client.ts` | Not a secret | None |
 | `PHARMA_SUPABASE_SERVICE_ROLE_KEY` | `.env.local` only | Server-only, git-ignored, **not** exposed | Rotate **if** it ever appeared in a commit/chat/log; then check the Pharma project's Auth logs for anomalies |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `src/lib/push.ts` fallback | Public by design | None |

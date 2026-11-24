@@ -13,10 +13,11 @@ import { SectionMarker } from "@/components/section-marker";
 import { NewPharmacyChatForm } from "@/components/new-pharmacy-chat-form";
 
 export default async function NewPharmacyChatPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { pharmacy?: string };
+  searchParams: Promise<{ pharmacy?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 

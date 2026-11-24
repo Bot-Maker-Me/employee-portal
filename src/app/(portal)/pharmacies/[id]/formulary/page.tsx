@@ -5,12 +5,14 @@ import { requirePortalUser } from "@/lib/sites/session";
 import { RecordTable } from "@/components/sites/record-table";
 
 export default async function PharmacyFormularyPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { q?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = await searchParamsPromise;
   const { profile } = await requirePortalUser();
   const pharmacy = await getMyPharmacy(params.id);
   if (!pharmacy) notFound();

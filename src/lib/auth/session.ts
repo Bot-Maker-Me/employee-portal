@@ -16,10 +16,10 @@ import { USER_ID_HEADER } from "@/lib/auth/session-constants";
  * than calling `getUser()` directly.
  */
 export async function getSessionUserId(): Promise<string | null> {
-  const fromMiddleware = headers().get(USER_ID_HEADER);
+  const fromMiddleware = (await headers()).get(USER_ID_HEADER);
   if (fromMiddleware) return fromMiddleware;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

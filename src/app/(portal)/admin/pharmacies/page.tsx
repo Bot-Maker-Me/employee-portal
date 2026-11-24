@@ -14,7 +14,7 @@ export default async function AdminPharmaciesPage() {
   const ctx = await getAdminContext();
   if (!ctx) redirect("/home");
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const [pharmacies, users, organizations, access, tenants] = await Promise.all([
     listMyPharmacies(),
     listUsersForAdmin(ctx),

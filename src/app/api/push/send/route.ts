@@ -29,7 +29,7 @@ const MAX_BODY_BYTES = 8 * 1024;
  * screen, so they only ever say that something needs attention.
  */
 export async function POST(request: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });

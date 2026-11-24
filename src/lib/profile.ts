@@ -26,7 +26,7 @@ export type Profile = {
 export const getProfile = cache(
   async (userId: string): Promise<Profile | null> => {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data, error } = await supabase
         .from("profiles")
         .select(

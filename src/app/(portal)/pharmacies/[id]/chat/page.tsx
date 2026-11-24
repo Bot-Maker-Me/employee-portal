@@ -18,7 +18,8 @@ import type { TopicCategory, TopicPriority } from "@/lib/topics";
  * "Chat with Pharmacy" for one pharmacy: the organization's Pharmacy Chat
  * threads with this pharmacy's linked Pharma Portal tenant.
  */
-export default async function PharmacySectionChatPage({ params }: { params: { id: string } }) {
+export default async function PharmacySectionChatPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const { profile } = await requirePortalUser();
   const pharmacy = await getMyPharmacy(params.id);
   if (!pharmacy) notFound();

@@ -30,6 +30,8 @@ create table pg_temp.username_setup_settings (
   placeholder_domain text   not null,
   reserved           text[] not null
 );
+-- Session-private temp table; RLS on as defence in depth (owner still writes).
+alter table pg_temp.username_setup_settings enable row level security;
 insert into pg_temp.username_setup_settings
 values ('employees.internal', array['admin', 'administrator', 'root', 'support', 'system']);
 -- ----------------------------------------------------------------------------
@@ -66,6 +68,8 @@ create table pg_temp.username_setup_assigned (
   role         text,
   organization text
 );
+-- Session-private temp table; RLS on as defence in depth (owner still writes).
+alter table pg_temp.username_setup_assigned enable row level security;
 
 do $$
 declare

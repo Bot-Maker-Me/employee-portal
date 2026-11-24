@@ -11,10 +11,11 @@ import { PharmaUnconfigured } from "@/components/pharma-unconfigured";
 import { ThreadView } from "@/components/thread-view";
 
 export default async function PharmacyThreadPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const params = await paramsPromise;
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 

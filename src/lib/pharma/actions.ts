@@ -39,7 +39,7 @@ async function requireActiveEmployee(): Promise<{
   organization: string;
   profile: Profile;
 } | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

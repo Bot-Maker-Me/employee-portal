@@ -6,8 +6,8 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
  * Server-side Supabase client (Server Components, Route Handlers, Server Actions).
  * Reads the user's session from cookies so RLS runs as the authenticated user.
  */
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {

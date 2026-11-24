@@ -17,9 +17,9 @@ const COOKIE_OPTIONS = {
 } as const;
 
 /** Sign-in used a temporary password: every route leads to /change-password. */
-export function markForcedChangePending(): void {
+export async function markForcedChangePending(): Promise<void> {
   try {
-    cookies().set(FORCED_CHANGE_COOKIE, "1", {
+    (await cookies()).set(FORCED_CHANGE_COOKIE, "1", {
       ...COOKIE_OPTIONS,
       maxAge: 60 * 60 * 24 * 30,
     });
@@ -30,9 +30,9 @@ export function markForcedChangePending(): void {
 }
 
 /** The user has chosen their own password. */
-export function clearForcedChangePending(): void {
+export async function clearForcedChangePending(): Promise<void> {
   try {
-    cookies().delete(FORCED_CHANGE_COOKIE);
+    (await cookies()).delete(FORCED_CHANGE_COOKIE);
   } catch {
     // Same as above — nothing to do.
   }

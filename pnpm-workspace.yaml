@@ -376,4 +376,14 @@ allowBuilds:
 
 packages:
   - .
-minimumReleaseAge: 1440
+# Supply-chain hardening (Semgrep pnpm rules):
+# wait 7 days before installing newly published versions,
+minimumReleaseAge: 10080
+# never let a dependency downgrade its own trust/provenance level,
+trustPolicy: no-downgrade
+# and refuse transitive deps from git/tarball URLs.
+blockExoticSubdeps: true
+
+# Next.js pins postcss 8.4.31 internally, which has known file-disclosure bugs.
+overrides:
+  postcss: ">=8.5.18"
