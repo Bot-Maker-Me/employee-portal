@@ -5,6 +5,7 @@ import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
 import { getThread } from "@/lib/pharma/chat";
 import { listPharmacies } from "@/lib/pharma/directory";
+import { getTenantGate, tenantVisible } from "@/lib/sites/data";
 import { FeatureDisabled } from "@/components/feature-disabled";
 import { PharmaUnconfigured } from "@/components/pharma-unconfigured";
 import { ThreadView } from "@/components/thread-view";
@@ -28,12 +29,18 @@ export default async function PharmacyThreadPage({
   if (!isPharmaConfigured()) return <PharmaUnconfigured />;
 
   // The thread and the pharmacy directory are independent — fetch together.
-  const [result, pharmacies] = await Promise.all([
+  const [result, pharmacies, gate] = await Promise.all([
     getThread(params.id),
     listPharmacies(),
+    getTenantGate(profile),
   ]);
-  // RLS-equivalent guard: only the caller's organization may open this thread.
-  if (!result || result.thread.organization_name !== profile.organization) {
+  // RLS-equivalent guard: only the caller's organization may open this thread,
+  // and only if they have access to that pharmacy.
+  if (
+    !result ||
+    result.thread.organization_name !== profile.organization ||
+    !tenantVisible(gate, result.thread.pharmacy_id)
+  ) {
     notFound();
   }
 

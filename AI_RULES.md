@@ -35,6 +35,12 @@ Source of truth for how the **Employee Portal** is built. Follow it in every cha
 - **Hardening migrations** live in `supabase/migrations/NNNN_name.sql`: additive, idempotent, versioned, never editing an older file and never dropping data/columns. Diagnostics in `supabase/audit/`, security tests in `supabase/tests/`. Secrets use `.env.local` (git-ignored) with `.env.example` as the committed template — `SUPABASE_SERVICE_ROLE_KEY` and `PLACEHOLDER_EMAIL_DOMAIN` are server-only, never `NEXT_PUBLIC_*`.
 - **Server-side rate limiting** lives in `src/lib/rate-limit.ts` (+ `rate_limits` table / `check_rate_limit*` RPCs). Enforce it in every route handler and server action; request inputs are parsed with zod schemas from `src/lib/validation.ts`.
 
+## Pharmacy sections & reference data
+- Menu: **Drug Database** (`/drugs`) and **Intervention Codes** (`/interventions`) are open to everyone in the organization. Each pharmacy (`portal_pharmacies`, e.g. Lanark, Eustace, Henderson's, Moose Factory, Downey) has its own section at `/pharmacies/[id]` with **Notices & Reminders**, **Policies & Procedures**, **Chat with Pharmacy** and **Formulary**.
+- Pharmacy visibility is per user: `pharmacy_access (pharmacy_id, user_id)`, managed at **Admin → Pharmacies** (`/admin/pharmacies`, checkbox grid). Admins see every pharmacy of their organization; super_admin sees all. Enforced by RLS (`can_view_pharmacy`, `can_manage_pharmacy`, `can_manage_org`, `can_read_org` — migration `0005_pharmacy_sites.sql`), not only the UI; unknown/forbidden pharmacy ids 404.
+- Only admins write content (server actions in `src/lib/sites/actions.ts`, which write with the caller's own session so RLS is the final gate). Reads live in `src/lib/sites/data.ts`; table column configs (also the bulk paste/CSV import order) in `src/lib/sites/records.ts`.
+- **Chat with Pharmacy** uses the existing Pharma Chat bridge, filtered to the pharmacy's `pharma_tenant_id`. A Pharma tenant linked to a portal pharmacy is hidden everywhere in Pharmacy Chat (list, thread, new chat, send, polling) from staff without access to that pharmacy (`getTenantGate`); unlinked tenants behave as before.
+
 ## Roles & Approval
 - `profiles.role`: `employee` | `admin` | `super_admin`. `profiles.status`: `pending` | `active`.
 - `super_admin` is the platform owner (no `organization` required): creates/deletes organizations, approves users, assigns organizations, toggles features for any org.

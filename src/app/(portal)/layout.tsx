@@ -13,6 +13,7 @@ import { UnlinkedAccount } from "@/components/unlinked-account";
 import { PendingApproval } from "@/components/pending-approval";
 import { AccountDeactivated } from "@/components/account-deactivated";
 import { isUserActive } from "@/lib/app-status";
+import { listMyPharmacies } from "@/lib/sites/data";
 import type { FeatureFlags } from "@/lib/features";
 
 const NO_FLAGS: FeatureFlags = {
@@ -51,9 +52,12 @@ export default async function PortalLayout({
   if (profile.must_change_password) redirect("/change-password");
 
   const admin = isAdmin(profile);
-  const flags = profile.organization
-    ? await getFeatureFlags(profile.organization)
-    : NO_FLAGS;
+  // Flags and the user's pharmacy list (RLS-filtered) are independent.
+  const [flags, pharmacies] = await Promise.all([
+    profile.organization ? getFeatureFlags(profile.organization) : NO_FLAGS,
+    listMyPharmacies(),
+  ]);
+  const navPharmacies = pharmacies.map(({ id, name }) => ({ id, name }));
   const { openTopics, unreadTopics, unreadChannels } =
     await getActivitySummary(flags);
 
@@ -70,7 +74,12 @@ export default async function PortalLayout({
           <Wordmark />
         </div>
         <div className="flex-1 px-3">
-          <PortalSidebar flags={flags} badges={badges} isAdmin={admin} />
+          <PortalSidebar
+            flags={flags}
+            badges={badges}
+            isAdmin={admin}
+            pharmacies={navPharmacies}
+          />
         </div>
         <UserFooter profile={profile} />
       </aside>

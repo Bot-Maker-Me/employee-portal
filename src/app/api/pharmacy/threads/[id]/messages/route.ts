@@ -3,7 +3,8 @@ import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags } from "@/lib/features";
 import { isPharmaConfigured } from "@/lib/pharma/client";
-import { getThreadOrganization, listThreadMessages } from "@/lib/pharma/chat";
+import { getThreadScope, listThreadMessages } from "@/lib/pharma/chat";
+import { getTenantGate, tenantVisible } from "@/lib/sites/data";
 import { clientIpFromHeaders, enforceRateLimit } from "@/lib/rate-limit";
 import { messagePollSchema } from "@/lib/validation";
 
@@ -64,14 +65,19 @@ export async function GET(
   }
 
   // Flags and thread ownership are independent — check both at once.
-  const [flags, threadOrganization] = await Promise.all([
+  const [flags, scope, gate] = await Promise.all([
     getFeatureFlags(profile.organization),
-    getThreadOrganization(parsed.data.id),
+    getThreadScope(parsed.data.id),
+    getTenantGate(profile),
   ]);
   if (!flags.employee_pharmacy_topics) {
     return NextResponse.json({ error: "DISABLED" }, { status: 403 });
   }
-  if (threadOrganization !== profile.organization) {
+  if (
+    !scope ||
+    scope.organization !== profile.organization ||
+    !tenantVisible(gate, String(scope.pharmacyId))
+  ) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
   if (!isPharmaConfigured()) {

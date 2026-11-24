@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MessagesSquare, Users } from "lucide-react";
+import { ArrowRight, Building2, Database, ListChecks, MessagesSquare, Users } from "lucide-react";
 import { getSessionUserId } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profile";
 import { getFeatureFlags, type FeatureFlags } from "@/lib/features";
@@ -10,6 +10,7 @@ import { formatStamp } from "@/lib/format";
 import { SectionMarker } from "@/components/section-marker";
 import { ActionCard } from "@/components/action-card";
 import { UnreadBadge } from "@/components/topic-badges";
+import { listMyPharmacies } from "@/lib/sites/data";
 
 const NO_FLAGS: FeatureFlags = {
   employee_team_chat: false,
@@ -26,7 +27,10 @@ export default async function HomePage() {
     ? await getFeatureFlags(profile.organization)
     : NO_FLAGS;
 
-  const activity = await getRecentActivity(flags, userId);
+  const [activity, pharmacies] = await Promise.all([
+    getRecentActivity(flags, userId),
+    listMyPharmacies(),
+  ]);
 
   const firstName = (profile?.full_name ?? "").trim().split(/\s+/)[0] || "there";
   const showPharmacy = flags.employee_pharmacy_topics;
@@ -46,35 +50,66 @@ export default async function HomePage() {
         <h2 id="actions-heading" className="sr-only">
           Quick actions
         </h2>
-        {showPharmacy || showTeam ? (
-          <div className="grid gap-5 sm:grid-cols-2">
-            {showPharmacy && (
-              <ActionCard
-                href="/pharmacy"
-                icon={MessagesSquare}
-                title="Chat with the pharmacy"
-                description="Open a tracked question — orders, deliveries, clinical queries."
-              />
-            )}
-            {showTeam && (
-              <ActionCard
-                href="/team"
-                icon={Users}
-                title="Message a colleague"
-                description="Internal, real-time chat with your organization."
-              />
-            )}
-          </div>
-        ) : (
-          <div className="rounded-ledger border border-line bg-raised p-6 text-[14px] text-muted">
-            Messaging features are switched off for your organization. Contact
-            your administrator to enable them.
-          </div>
-        )}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <ActionCard
+            href="/drugs"
+            icon={Database}
+            title="Drug Database"
+            description="Look up a drug by brand, generic name or DIN."
+          />
+          <ActionCard
+            href="/interventions"
+            icon={ListChecks}
+            title="Intervention Codes"
+            description="Find the right code for a pharmacist intervention."
+          />
+          {showPharmacy && (
+            <ActionCard
+              href="/pharmacy"
+              icon={MessagesSquare}
+              title="Chat with the pharmacy"
+              description="Open a tracked question — orders, deliveries, clinical queries."
+            />
+          )}
+          {showTeam && (
+            <ActionCard
+              href="/team"
+              icon={Users}
+              title="Message a colleague"
+              description="Internal, real-time chat with your organization."
+            />
+          )}
+        </div>
       </section>
 
+      {pharmacies.length > 0 && (
+        <section aria-labelledby="pharmacies-heading">
+          <SectionMarker index="02" label="Your pharmacies" />
+          <h2 id="pharmacies-heading" className="sr-only">
+            Your pharmacies
+          </h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {pharmacies.map((pharmacy, index) => (
+              <Link
+                key={pharmacy.id}
+                href={`/pharmacies/${pharmacy.id}/notices`}
+                className="group hover-lift animate-rise stagger flex items-center gap-3 rounded-ledger border border-line bg-raised px-4 py-3.5 hover:border-accent"
+                style={{ "--i": index } as CSSProperties}
+              >
+                <Building2 className="h-4 w-4 shrink-0 text-accent-soft" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{pharmacy.name}</span>
+                <ArrowRight
+                  className="h-4 w-4 text-muted transition-transform group-hover:translate-x-1 group-hover:text-accent-soft"
+                  aria-hidden="true"
+                />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section aria-labelledby="activity-heading">
-        <SectionMarker index="02" label="Recent activity" />
+        <SectionMarker index={pharmacies.length > 0 ? "03" : "02"} label="Recent activity" />
         <h2 id="activity-heading" className="sr-only">
           Recent activity
         </h2>

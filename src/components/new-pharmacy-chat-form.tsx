@@ -22,11 +22,15 @@ const MAX = 4000;
 
 export function NewPharmacyChatForm({
   pharmacies,
+  defaultPharmacyId,
 }: {
   pharmacies: Pharmacy[];
+  defaultPharmacyId?: string;
 }) {
   const router = useRouter();
-  const [pharmacyId, setPharmacyId] = useState(pharmacies[0]?.id ?? "");
+  const [pharmacyId, setPharmacyId] = useState(
+    defaultPharmacyId ?? pharmacies[0]?.id ?? "",
+  );
   const [members, setMembers] = useState<PharmacyMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [memberId, setMemberId] = useState("");
